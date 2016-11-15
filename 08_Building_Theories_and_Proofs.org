@@ -314,7 +314,7 @@ trick: to show =l + 2 = 2 * n + 2= we take the reflexivity proof
 =rfl : l + 2 = l + 2= and then substitute =2 * n= for the second =l=.
 
 More precisely, if =t= is of a function type, the expression =!t=
-makes all the arguments explicit up until the first argument that
+makes all the arguments implicit up until the first argument that
 cannot be inferred from later arguments or the return type. This is
 usually what you want; for example, when applying a theorem, the
 arguments can often be inferred from context, but the hypothesis need
