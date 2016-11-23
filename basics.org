@@ -41,9 +41,9 @@
 #+LATEX_CLASS_OPTIONS: [11pt,ebook,table,dvipsnames,oneside,openany]
 #+LATEX_HEADER: \input{Header}
 
-#+BEGIN_LATEX
+#+BEGIN_EXPORT LATEX
 %\OnehalfSpacing
-#+END_LATEX
+#+END_EXPORT
 
 
 * Basics: Functional Programming in Lean

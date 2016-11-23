@@ -18,7 +18,7 @@ tutorial.org: $(ORGS)
 	./merge_chapters.sh
 
 %.html: %.org .cask elisp/org-html-export.el header/html.org footer/bib.html.org lean.bib
-	@if [ ! -f ~/.cask/bin/cask ]; then echo "Cask Not Found. Please do 'make install-cask' first"; exit 1; fi
+	# @if [ ! -f ~/.cask/bin/cask ]; then echo "Cask Not Found. Please do 'make install-cask' first"; exit 1; fi
 	cat header/html.org $< > $(TMPDIR)/$<.temp.org
 	(grep "\\\\cite{" $< && cat footer/bib.html.org >> $(TMPDIR)/$<.temp.org) || true
 	cp *.bib $(TMPDIR)
