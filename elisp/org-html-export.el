@@ -79,6 +79,10 @@ contextual information."
                    (format "\n<pre class=\"src src-%s\"%s>%s</pre>" lang label code)))))))))
 (setq org-confirm-babel-evaluate nil)
 
+; don't convert spaces to tabs
+(setq org-src-preserve-indentation t
+      org-edit-src-content-indentation 0)
+
 (defun lean-extract-chapter-name (str)
   (let ((num (string-to-number str)))
     (cond ((= num 0) str)
