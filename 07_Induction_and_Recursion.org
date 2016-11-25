@@ -555,8 +555,8 @@ imf : Π a, image_of f (f a)
 
 open image_of
 
-definition inverse {f : A → B} : Π b, image_of f b → A
-| inverse ⌞f a⌟ (imf f a) := a
+definition inverse : Π f : A → B, Π b, image_of f b → A
+| inverse f ⌞f a⌟ (imf _ _) := a
 #+END_SRC
 
 Inaccessible terms can also be used to reduce the complexity of the
