@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Test is all examples in the .org files are working
 if [ $# -ne 2 ]; then
     echo "Usage: test.sh [lean-executable-path] [file]"
