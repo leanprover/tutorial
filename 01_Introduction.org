@@ -4,7 +4,7 @@
 * Introduction
 
 #+begin_warning
-Please note that this is the tutorial for [[https://github.com/leanprover/lean2][Lean2]], which allows the use of
+Please note that this is the tutorial for [[https://github.com/leanprover/lean2][Lean 2]], which allows the use of
 homotopy type theory (HoTT). It is /not/ the [[https://leanprover.github.io/introduction_to_lean][tutorial]] for the
 [[https://github.com/leanprover/lean][current version of Lean]].
 #+end_warning
