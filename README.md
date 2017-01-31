@@ -6,7 +6,7 @@ Lean Tutorial
  - Web : https://leanprover.github.io/tutorial
  - PDF : https://leanprover.github.io/tutorial/tutorial.pdf
 
-Please note that this is the tutorial for the snapshot of Lean which allows the use of homotopy type theory. It is /not/ the [[https://github.com/leanprover/introduction_to_lean][tutorial]] for the [[https://github.com/leanprover/lean][active development branch]].
+Please note that this is the tutorial for [Lean2](https://github.com/leanprover/lean2), which allows the use of homotopy type theory (HoTT). It is /not/ the [tutorial](https://leanprover.github.io/introduction_to_lean) for the [current version of Lean](https://github.com/leanprover/lean).
 
 How to Build
 ------------

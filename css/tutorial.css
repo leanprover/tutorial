@@ -289,6 +289,18 @@ button::-moz-focus-inner {
   padding: 0;
   border: 0;
 }
+.warning {
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background-color: #fcf8e3;
+  border-color: #faebcc;
+  color: #8a6d3b;
+}
+.warning > p {
+    margin: 0;
+}
 
 .org-src-container {
     margin-bottom: 15px;

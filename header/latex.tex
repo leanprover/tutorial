@@ -42,6 +42,14 @@
     citecolor=Periwinkle
 }
 
+% warning box
+\usepackage{mdframed}
+\definecolor{warningborder}{HTML}{FAEBCC}
+\definecolor{warning}{HTML}{FCF8E3}
+\newenvironment{warning}{%
+  \begin{mdframed}[backgroundcolor=warning,linecolor=warningborder]%
+}{\end{mdframed}}
+
 \usepackage[acronym,toc]{glossaries}
 \include{Glossary}
 \makeglossaries
