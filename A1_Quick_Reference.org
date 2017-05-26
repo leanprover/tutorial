@@ -1,9 +1,11 @@
-#+Title: Lean Quick Reference
+#+Title: Lean 2 Quick Reference
 #+Author: [[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]], [[http://leodemoura.github.io][Leonardo de Moura]], [[http://www.cs.cmu.edu/~soonhok][Soonho Kong]]
 #+DATE: \href{https://github.com/leanprover/tutorial/commit/\gitHash}{Version \gitAbbrevHash}, updated at \gitAuthorIsoDate
 #+OPTIONS: H:4
 
 * Quick Reference
+
+Note that this quick reference guide describes Lean 2 only.
 
 ** Displaying Information
 
