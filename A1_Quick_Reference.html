@@ -1,0 +1,979 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:52 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lean Quick Reference</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]]Jeremy Avigad, [[http://leodemoura.github.io][Leonardo de Moura]]Leonardo de Moura, [[http://www.cs.cmu.edu/~soonhok][Soonho Kong]]Soonho Kong" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Lean Quick Reference</h1>
+
+<div id="outline-container-orgea3756b" class="outline-2">
+<h2 id="orgea3756b"><span class="section-number-2"> A1</span> Quick Reference</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+Note that this quick reference guide describes Lean 2 only.
+</p>
+</div>
+
+<div id="outline-container-org6a4741f" class="outline-3">
+<h3 id="org6a4741f"><span class="section-number-3"> A1.1</span> Displaying Information</h3>
+<div class="outline-text-3" id="text-1-1">
+<div class="org-src-container">
+
+<pre class="src src-text">check &lt;expr&gt;                 : check the type of an expression
+eval &lt;expr&gt;                  : evaluate expression
+print &lt;id&gt;                   : print information about &lt;id&gt;
+print notation               : display all notation
+print notation &lt;tokens&gt;      : display notation using any of the tokens
+print axioms                 : display assumed axioms
+print options                : display options set by user or emacs mode
+print prefix &lt;namespace&gt;     : display all declarations in the namespace
+print coercions              : display all coercions
+print coercions &lt;source&gt;     : display only the coercions from &lt;source&gt;
+print classes                : display all classes
+print instances &lt;class name&gt; : display all instances of the given class
+print fields &lt;structure&gt;     : display all "fields" of a structure
+print metaclasses            : show kinds of metadata stored in a namespace
+help commands                : display all available commands
+help options                 : display all available options
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org470ed6e" class="outline-3">
+<h3 id="org470ed6e"><span class="section-number-3"> A1.2</span> Common Options</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+You can change an option by typing <code>set_option &lt;option&gt; &lt;value&gt;</code>.
+The <code>&lt;option&gt;</code> field supports TAB-completion.
+You can see an explanation of all options using <code>help options</code>.
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-text">pp.implicit        : display implicit arguments
+pp.universes       : display universe variables
+pp.coercions       : show coercions
+pp.notation        : display output using defined notations
+pp.abbreviations   : display output using defined abbreviations
+pp.full_names      : use full names for identifiers
+pp.all             : disable notations, implicit arguments, full names,
+                     universe parameters and coercions
+pp.beta            : beta reduce terms before displaying them
+pp.max_depth       : maximum expression depth
+pp.max_steps       : maximum steps for printing expression
+pp.private_names   : show internal name assigned to private definitions and theorems
+pp.metavar_args    : show arguments to metavariables
+pp.numerals        : print output as numerals
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org195688d" class="outline-3">
+<h3 id="org195688d"><span class="section-number-3"> A1.3</span> Attributes</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+These can generally be declared with a <code>definition</code> or <code>theorem</code>, or
+using the <code>attribute</code> or <code>local attribute</code> commands.
+</p>
+
+<p>
+Example: <code>local attribute nat.add nat.mul [reducible]</code>.
+</p>
+<div class="org-src-container">
+
+<pre class="src src-text">reducible       : unfold at any time during elaboration if necessary
+quasireducible  : unfold during higher order unification,
+                  but not during type class resolution
+semireducible   : unfold when performance is not critical
+irreducible     : avoid unfolding during elaboration
+coercion        : use as a coercion between types
+class           : type class declaration
+instance        : type class instance
+priority &lt;num&gt;  : add a priority to an instance or notation
+parsing-only    : use notation only for input
+unfold &lt;num&gt;    : if the argument at position &lt;num&gt; is marked with [constructor]
+                  unfold this and that argument (for iota reduction)
+constructor     : see unfold &lt;num&gt;
+unfold-full     : unfold definition when fully applied
+recursor        : user-defined recursor/eliminator, used for the induction tactic
+recursor &lt;num&gt;  : user-defined non-dependent recursor/eliminator
+                  where &lt;num&gt; is the position of the major premise
+refl            : reflexivity lemma, used for calc-expressions, tactics and simplifier
+symm            : symmetry lemma, used for calc-expressions, tactics and simplifier
+trans           : transitivity lemma, used for calc-expressions, tactics and simplifier
+subst           : substitution lemma, used for calc-expressions and simplifier
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2327e1c" class="outline-3">
+<h3 id="org2327e1c"><span class="section-number-3"> A1.4</span> Proof Elements</h3>
+<div class="outline-text-3" id="text-1-4">
+</div><div id="outline-container-org6d5e31e" class="outline-4">
+<h4 id="org6d5e31e"><span class="section-number-4"> A1.4.1</span> Term Mode</h4>
+<div class="outline-text-4" id="text-1-4-1">
+<div class="org-src-container">
+
+<pre class="src src-text">take, assume     : syntactic sugar for lambda
+let              : introduce local definitions
+have             : introduce auxiliary fact (opaque, in the body)
+assert           : like "have", but visible to tactics
+show             : make result type explicit
+suffices         : show that the goal follows from this fact
+obtain ..., from : destruct structures such as exists, sigma, ...
+match ... with   : introduce proof or definition by cases
+proof ... qed    : introduce a proof or definition block, elaborated separately
+</pre>
+</div>
+
+<p>
+The keywords <code>have</code> and <code>assert</code> can be anonymous, which is to say, they can be used without
+giving a label to the hypothesis. The corresponding element of the context can then be
+referred to using the keyword <code>this</code> until another anonymous element is introduced, or by
+enclosing the assertion in backticks. To avoid a syntactic ambiguity, the keyword <code>suppose</code>
+is used instead of <code>assume</code> to introduce an anonymous assumption.
+</p>
+
+<p>
+One can also use anonymous binders (like <code>lambda</code>, <code>take</code>, <code>obtain</code>, etc.) by enclosing
+the type in backticks, as in <code>λ `nat`, `nat` + 1</code>. This introduces a variable of the given
+type in the context with a hidden name.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org53439a2" class="outline-4">
+<h4 id="org53439a2"><span class="section-number-4"> A1.4.2</span> Tactic Mode</h4>
+<div class="outline-text-4" id="text-1-4-2">
+<p>
+At any point in a proof or definition you can switch to tactic mode and apply tactics to
+finish that part of the proof or definition.
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-text">begin ... end   : enter tactic mode, and blocking mechanism within tactic mode
+{ ... }         : blocking mechanism within tactic mode
+by ...          : enter tactic mode, can only execute a single tactic
+begin+; by+     : same as =begin= and =by=, but make local results available
+have            : as in term mode (enters term mode), but visible to tactics
+show            : as in term mode (enters term mode)
+match ... with  : as in term mode (enters term mode)
+let             : introduce abbreviation (not visible in the context)
+note            : introduce local fact (opaque, in the body)
+</pre>
+</div>
+
+<p>
+Normally, entering tactic mode will make declarations in the local
+context given by "have"-expressions unavailable. The annotations
+<code>begin+</code> and <code>by+</code> make all these declarations available.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgdb82e9b" class="outline-3">
+<h3 id="orgdb82e9b"><span class="section-number-3"> A1.5</span> Sectioning Mechanisms</h3>
+<div class="outline-text-3" id="text-1-5">
+<div class="org-src-container">
+
+<pre class="src src-text">namespace &lt;id&gt; ... end &lt;id&gt;  : begin / end namespace
+section ... end              : begin / end section
+section &lt;id&gt; .... end &lt;id&gt;   : begin / end section
+
+variable (var : type)        : introduce variable where needed
+variable {var : type}        : introduce implicit variable where needed
+variable {{var : type}}      : introduce implicit variable where needed,
+                               which is not maximally inserted
+variable [var : type]        : introduce class inference variable where needed
+variable {var} (var) [var]   : change the bracket type of an existing variable
+parameter                    : introduce variable, fixed within the section
+include                      : include variable in subsequent definitions
+omit                         : undo "include"
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org137b33f" class="outline-3">
+<h3 id="org137b33f"><span class="section-number-3"> A1.6</span> Tactics</h3>
+<div class="outline-text-3" id="text-1-6">
+<p>
+We say a tactic is more "aggressive" when it uses a more expensive (and complete)
+unification algorithm, and/or unfolds more aggressively definitions.
+</p>
+</div>
+
+<div id="outline-container-org14cba0e" class="outline-4">
+<h4 id="org14cba0e"><span class="section-number-4"> A1.6.1</span> General tactics</h4>
+<div class="outline-text-4" id="text-1-6-1">
+<div class="org-src-container">
+
+<pre class="src src-text">apply &lt;expr&gt;      : apply a theorem to the goal, create subgoals for non-dependent premises
+fapply &lt;expr&gt;     : like apply, but create subgoals also for dependent premises that were
+                    not assigned by unification procedure
+eapply &lt;expr&gt;     : like apply, but used for applying recursor-like definitions
+exact &lt;expr&gt;      : apply and close goal, or fail
+rexact &lt;expr&gt;     : relaxed (and more expensive) version of exact
+                    (this will fully elaborate &lt;expr&gt; before trying to match it to the goal)
+refine &lt;expr&gt;     : like exact, but creates subgoals for unresolved subgoals
+
+intro &lt;ids&gt;       : introduce multiple variables or hypotheses
+intros &lt;ids&gt;      : same as intro &lt;ids&gt;
+intro             : let Lean choose a name
+intros            : introduce variables as long as the goal reduces to a function type
+                    and let Lean choose the names
+
+rename &lt;id&gt; &lt;id&gt;  : rename a variable or hypothesis
+generalize &lt;expr&gt; : generalize an expression
+clear &lt;ids&gt;       : remove variables or hypotheses
+revert &lt;ids&gt;      : move variables or hypotheses into the goal
+assumption        : try to close a goal with something in the context
+eassumption       : a more aggressive ("expensive") form of assumption
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org4c8e170" class="outline-4">
+<h4 id="org4c8e170"><span class="section-number-4"> A1.6.2</span> Equational reasoning</h4>
+<div class="outline-text-4" id="text-1-6-2">
+<div class="org-src-container">
+
+<pre class="src src-text">esimp                 : simplify expressions (by evaluation/normalization) in goal
+esimp at &lt;id&gt;         : simplify hypothesis in context
+esimp at *            : simplify everything
+esimp [&lt;ids&gt;]         : unfold definitions and simplify expressions in goal
+esimp [&lt;ids&gt;] at &lt;id&gt; : unfold definitions and simplify hypothesis in context
+esimp [&lt;ids&gt;] at *    : unfold definitions and simplify everything
+unfold &lt;id&gt;           : similar to (esimp &lt;id&gt;)
+fold &lt;expr&gt;           : unfolds &lt;expr&gt;, search for convertible term in the
+                        goal, and replace it with &lt;expr&gt;
+
+beta                  : beta reduce goal
+whnf                  : put goal in weak head normal form
+change &lt;expr&gt;         : change the goal to &lt;expr&gt; if it is convertible to &lt;expr&gt;
+
+rewrite &lt;rule&gt;        : apply a rewrite rule (see below)
+rewrite [&lt;rules&gt;]     : apply a sequence of rewrite rules (see below)
+krewrite              : using keyed rewriting, matches any subterm
+                        with the same head as the rewrite rule
+xrewrite              : a more aggressive form of rewrite
+
+subst &lt;id&gt;            : substitute a variable defined in the context, and clear hypothesis and
+                        variable
+substvars             : substitute all variables in the context
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org62e213d" class="outline-5">
+<h5 id="org62e213d"><span class="section-number-5"> A1.6.2.1</span> Rewrite rules</h5>
+<div class="outline-text-5" id="text-1-6-2-1">
+<p>
+You can combine rewrite rules from different groups in the following order, starting with the innermost:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-text">e                : match left-hand-side of equation e to a goal subterm,
+                   then replace every occurence with right-hand-side
+{p}e             : apply e only where pattern p (which may contain placeholders) matches
+
+n t              : apply t exactly n times
+n&gt;t              : apply t at most n times
+*t               : apply t zero or more times (up to rewriter.max_iter)
++t               : apply t one or more times
+
+-t               : apply t in reverse direction
+
+&#8593;id              : unfold id
+&#8593;[ids]           : unfold ids
+&#8595;id              : fold id
+&#9656;expr            : reduce goal to expression expr
+&#9656;*               : equivalent to esimp
+
+t at {i, ...}    : apply t only at numbered occurences
+t at -{i, ...}   : apply t only at all but the numbered occurences
+t at H           : apply t at hypothesis H
+t at H {i, ...}  : apply t only at numbered occurences in H
+t at H -{i, ...} : apply t only at all but the numbered occurences in H
+t at * &#8866;         : apply t at all hypotheses
+t at *           : apply t at the goal and all hypotheses
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0a9587f" class="outline-4">
+<h4 id="org0a9587f"><span class="section-number-4"> A1.6.3</span> Induction and cases</h4>
+<div class="outline-text-4" id="text-1-6-3">
+<div class="org-src-container">
+
+<pre class="src src-text">cases &lt;expr&gt;                    : decompose an element of an inductive type
+cases &lt;expr&gt; with &lt;ids&gt;         : name newly introduced variables as specified by &lt;ids&gt;
+induction &lt;expr&gt; (with &lt;ids&gt;)   : use induction
+induction &lt;expr&gt; using &lt;def&gt;    : use the definition &lt;def&gt; to apply induction
+constructor                     : construct an element of an inductive type by applying the
+                                  first constructor that succeeds
+constructor &lt;i&gt;                 : construct an element of an inductive type by applying the
+                                  ith-constructor
+fconstructor                    : construct an element of an inductive type by (fapply)ing the
+                                  first constructor that succeeds
+fconstructor &lt;i&gt;                : construct an element of an inductive type by (fapply)ing the
+                                  ith-constructor
+injection &lt;id&gt; (with &lt;ids&gt;)     : use injectivity of constructors at specified hypothesis
+split                           : equivalent to (constructor 1), only applicable to inductive
+                                  datatypes with a single constructor (e.g. and introduction)
+left                            : equivalent to (constructor 1), only applicable to inductive
+                                  datatypes with two constructors (e.g. left or introduction)
+right                           : equivalent to (constructor 2), only applicable to inductive
+                                  datatypes with two constructors (e.g. right or introduction)
+existsi &lt;expr&gt;                  : similar to (constructor 1) but we can provide an argument,
+                                  useful for performing exists/sigma introduction
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org13d53d9" class="outline-4">
+<h4 id="org13d53d9"><span class="section-number-4"> A1.6.4</span> Special-purpose tactics</h4>
+<div class="outline-text-4" id="text-1-6-4">
+<div class="org-src-container">
+
+<pre class="src src-text">contradiction       : close contradictory goal
+exfalso             : implements the "ex falso quodlibet" logical principle
+congruence          : solve goals of the form (f a_1 ... a_n = f' b_1 ... b_n) by congruence
+reflexivity         : reflexivity of equality (or any relation marked with attribute refl)
+symmetry            : symmetry of equality (or any relation marked with attribute symm)
+transitivity &lt;expr&gt; : transitivity of equality (or any relation marked with attribute trans)
+trivial             : apply true introduction
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org30694be" class="outline-4">
+<h4 id="org30694be"><span class="section-number-4"> A1.6.5</span> Combinators</h4>
+<div class="outline-text-4" id="text-1-6-5">
+<div class="org-src-container">
+
+<pre class="src src-text">and_then &lt;tac1&gt; &lt;tac2&gt; (notation: &lt;tac1&gt; ; &lt;tac2&gt;)
+                         : execute &lt;tac1&gt; and then execute &lt;tac2&gt;, backtracking when needed
+                           (aka sequential composition)
+or_else &lt;tac1&gt; &lt;tac2&gt; (notation: (&lt;tac1&gt; | &lt;tac2&gt;))
+                         : execute &lt;tac1&gt; if it fails, execute &lt;tac2&gt;
+&lt;tac1&gt;: &lt;tac2&gt;           : apply &lt;tac1&gt; and then apply &lt;tac2&gt; to all subgoals generated by &lt;tac1&gt;
+par &lt;tac1&gt; &lt;tac2&gt;        : execute &lt;tac1&gt; and &lt;tac2&gt; in parallel
+fixpoint (fun t, &lt;tac&gt;)  : fixpoint tactic, &lt;tac&gt; may refer to t
+try &lt;tac&gt;                : execute &lt;tac&gt;, if it fails do nothing
+repeat &lt;tac&gt;             : repeat &lt;tac&gt; zero or more times (until it fails)
+repeat1 &lt;tac&gt;            : like (repeat &lt;tac&gt;), but fails if &lt;tac&gt; does not succeed at least
+                           once
+at_most &lt;num&gt; &lt;tac&gt;      : like (repeat &lt;tac&gt;), but execute &lt;tac&gt; at most &lt;num&gt; times
+do &lt;num&gt; &lt;tac&gt;           : execute &lt;tac&gt; exactly &lt;num&gt; times
+determ &lt;tac&gt;             : discard all but the first proof state produced by &lt;tac&gt;
+discard &lt;tac&gt; &lt;num&gt;      : discard the first &lt;num&gt; proof-states produced by &lt;tac&gt;
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orga3e5bb6" class="outline-4">
+<h4 id="orga3e5bb6"><span class="section-number-4"> A1.6.6</span> Goal management</h4>
+<div class="outline-text-4" id="text-1-6-6">
+<div class="org-src-container">
+
+<pre class="src src-text">focus_at &lt;tac&gt; &lt;i&gt;  : execute &lt;tac&gt; to the ith-goal, and fail if it is not solved
+focus  &lt;tac&gt;        : equivalent to (focus_at &lt;tac&gt; 0)
+rotate_left  &lt;num&gt;  : rotate goals to the left &lt;num&gt; times
+rorate_right &lt;num&gt;  : rotate goals to the right &lt;num&gt; times
+rotate &lt;num&gt;        : equivalent to (rotate_left &lt;num&gt;)
+all_goals &lt;tac&gt;     : execute &lt;tac&gt; to all goals in the current proof state
+fail                : tactic that always fails
+id                  : tactic that does nothing and always succeeds
+now                 : fail if there are unsolved goals
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3208d35" class="outline-4">
+<h4 id="org3208d35"><span class="section-number-4"> A1.6.7</span> Information and debugging</h4>
+<div class="outline-text-4" id="text-1-6-7">
+<div class="org-src-container">
+
+<pre class="src src-text">state                          : display the current proof state
+check_expr &lt;expr&gt;              : display the type of the given expression in the current goal
+trace &lt;string&gt;                 : display the current string
+with_options [&lt;options&gt;] &lt;tac&gt; : execute a single tactic with different options
+                                 (&lt;options&gt; is a comma-separated list)
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org62a673f" class="outline-3">
+<h3 id="org62a673f"><span class="section-number-3"> A1.7</span> Emacs Lean-mode commands</h3>
+<div class="outline-text-3" id="text-1-7">
+</div><div id="outline-container-org8f216e0" class="outline-4">
+<h4 id="org8f216e0"><span class="section-number-4"> A1.7.1</span> Flycheck commands</h4>
+<div class="outline-text-4" id="text-1-7-1">
+<div class="org-src-container">
+
+<pre class="src src-text">C-c ! n    : next error
+C-c ! p    : previous error
+C-c ! l    : list errors
+C-c C-x    : execute Lean (in stand-alone mode)
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org275f378" class="outline-4">
+<h4 id="org275f378"><span class="section-number-4"> A1.7.2</span> Lean-specific commands</h4>
+<div class="outline-text-4" id="text-1-7-2">
+<div class="org-src-container">
+
+<pre class="src src-text">C-c C-k    : show how to enter unicode symbol
+C-c C-o    : set Lean options
+C-c C-e    : execute Lean command
+C-c C-r    : restart Lean process
+C-c C-p    : print the definition of the identifier under the cursor
+             in a new buffer
+C-c C-g    : show the current goal at a line of a tactic proof, in a
+             new buffer
+C-c C-f    : fill a placeholder by the printed term in the minibuffer.
+             Note: the elaborator might need more information
+             to correctly infer the implicit arguments of this term
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org9e63a07" class="outline-3">
+<h3 id="org9e63a07"><span class="section-number-3"> A1.8</span> Unicode Symbols</h3>
+<div class="outline-text-3" id="text-1-8">
+<p>
+This section lists some of the Unicode symbols that are used in the
+Lean library, their ASCII equivalents, and the keystrokes that can be
+used to enter them in the Emacs Lean mode.
+</p>
+</div>
+
+<div id="outline-container-org01cedd3" class="outline-4">
+<h4 id="org01cedd3"><span class="section-number-4"> A1.8.1</span> Logical symbols</h4>
+<div class="outline-text-4" id="text-1-8-1">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Unicode</th>
+<th scope="col" class="org-left">Ascii</th>
+<th scope="col" class="org-left">Emacs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">true</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">false</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">¬</td>
+<td class="org-left">not</td>
+<td class="org-left"><code>\not</code>, <code>\neg</code></td>
+</tr>
+
+<tr>
+<td class="org-left">∧</td>
+<td class="org-left">/\</td>
+<td class="org-left"><code>\and</code></td>
+</tr>
+
+<tr>
+<td class="org-left">‌∨</td>
+<td class="org-left">\/</td>
+<td class="org-left"><code>\or</code></td>
+</tr>
+
+<tr>
+<td class="org-left">→</td>
+<td class="org-left">-&gt;</td>
+<td class="org-left"><code>\to</code>, <code>\r</code>, <code>\implies</code></td>
+</tr>
+
+<tr>
+<td class="org-left">↔</td>
+<td class="org-left">&lt;-&gt;</td>
+<td class="org-left"><code>\iff</code>, <code>\lr</code></td>
+</tr>
+
+<tr>
+<td class="org-left">∀</td>
+<td class="org-left">forall</td>
+<td class="org-left"><code>\all</code></td>
+</tr>
+
+<tr>
+<td class="org-left">∃</td>
+<td class="org-left">exists</td>
+<td class="org-left"><code>\ex</code></td>
+</tr>
+
+<tr>
+<td class="org-left">λ</td>
+<td class="org-left">fun</td>
+<td class="org-left"><code>\l</code>, <code>\fun</code></td>
+</tr>
+
+<tr>
+<td class="org-left">≠</td>
+<td class="org-left">~=</td>
+<td class="org-left"><code>\ne</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-org6aa6a5b" class="outline-4">
+<h4 id="org6aa6a5b"><span class="section-number-4"> A1.8.2</span> Types</h4>
+<div class="outline-text-4" id="text-1-8-2">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<tbody>
+<tr>
+<td class="org-left">Π</td>
+<td class="org-left">Pi</td>
+<td class="org-left"><code>\Pi</code></td>
+</tr>
+
+<tr>
+<td class="org-left">→</td>
+<td class="org-left">-&gt;</td>
+<td class="org-left"><code>\to</code>, <code>\r</code>, <code>\implies</code></td>
+</tr>
+
+<tr>
+<td class="org-left">Σ</td>
+<td class="org-left">Sigma</td>
+<td class="org-left"><code>\S</code>, <code>\Sigma</code></td>
+</tr>
+
+<tr>
+<td class="org-left">×</td>
+<td class="org-left">prod</td>
+<td class="org-left"><code>\times</code></td>
+</tr>
+
+<tr>
+<td class="org-left">⊎</td>
+<td class="org-left">sum</td>
+<td class="org-left"><code>\union</code>, <code>\u+</code>, <code>\uplus</code></td>
+</tr>
+
+<tr>
+<td class="org-left">ℕ</td>
+<td class="org-left">nat</td>
+<td class="org-left"><code>\nat</code></td>
+</tr>
+
+<tr>
+<td class="org-left">ℤ</td>
+<td class="org-left">int</td>
+<td class="org-left"><code>\int</code></td>
+</tr>
+
+<tr>
+<td class="org-left">ℚ</td>
+<td class="org-left">rat</td>
+<td class="org-left"><code>\rat</code></td>
+</tr>
+
+<tr>
+<td class="org-left">ℝ</td>
+<td class="org-left">real</td>
+<td class="org-left"><code>\real</code></td>
+</tr>
+</tbody>
+</table>
+
+<p>
+When you open the namespaces <code>prod</code> and <code>sum</code>, you can use <code>*</code> and <code>+</code>
+for the types <code>prod</code> and <code>sum</code> respectively. To avoid overwriting
+notation, these have to have the same precedence as the arithmetic
+operations. If you don't need to use notation for the arithmetic
+operations, you can obtain lower-precedence versions by opening the
+namespaces <code>low_precedence_times</code> and <code>low_precedence_plus</code>
+respectively.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org39c352a" class="outline-4">
+<h4 id="org39c352a"><span class="section-number-4"> A1.8.3</span> Greek letters</h4>
+<div class="outline-text-4" id="text-1-8-3">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Unicode</th>
+<th scope="col" class="org-left">Emacs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">α</td>
+<td class="org-left"><code>\alpha</code></td>
+</tr>
+
+<tr>
+<td class="org-left">β</td>
+<td class="org-left"><code>\beta</code></td>
+</tr>
+
+<tr>
+<td class="org-left">γ</td>
+<td class="org-left"><code>\gamma</code></td>
+</tr>
+
+<tr>
+<td class="org-left">&#x2026;</td>
+<td class="org-left">&#x2026;</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-org6ea85b3" class="outline-4">
+<h4 id="org6ea85b3"><span class="section-number-4"> A1.8.4</span> Equality proofs (<code>open eq.ops</code>)</h4>
+<div class="outline-text-4" id="text-1-8-4">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Unicode</th>
+<th scope="col" class="org-left">Ascii</th>
+<th scope="col" class="org-left">Emacs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">⁻¹</td>
+<td class="org-left">eq.symm</td>
+<td class="org-left"><code>\sy</code>, <code>\inv</code>, <code>\-1</code></td>
+</tr>
+
+<tr>
+<td class="org-left">⬝</td>
+<td class="org-left">eq.trans</td>
+<td class="org-left"><code>\tr</code></td>
+</tr>
+
+<tr>
+<td class="org-left">▸</td>
+<td class="org-left">eq.subst</td>
+<td class="org-left"><code>\t</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-org5e71f25" class="outline-4">
+<h4 id="org5e71f25"><span class="section-number-4"> A1.8.5</span> Symbols for the rewrite tactic</h4>
+<div class="outline-text-4" id="text-1-8-5">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Unicode</th>
+<th scope="col" class="org-left">Ascii</th>
+<th scope="col" class="org-left">Emacs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">↑</td>
+<td class="org-left">^</td>
+<td class="org-left"><code>\u</code></td>
+</tr>
+
+<tr>
+<td class="org-left">↓</td>
+<td class="org-left">&lt;d</td>
+<td class="org-left"><code>\d</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-org5416779" class="outline-4">
+<h4 id="org5416779"><span class="section-number-4"> A1.8.6</span> Brackets</h4>
+<div class="outline-text-4" id="text-1-8-6">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Unicode</th>
+<th scope="col" class="org-left">Ascii</th>
+<th scope="col" class="org-left">Emacs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">⌞t⌟</td>
+<td class="org-left">?(t)</td>
+<td class="org-left"><code>\cll t \clr</code></td>
+</tr>
+
+<tr>
+<td class="org-left">⦃ t ⦄</td>
+<td class="org-left">{{t}}</td>
+<td class="org-left"><code>\{{ t \}}</code></td>
+</tr>
+
+<tr>
+<td class="org-left">⟨ t ⟩</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left"><code>\&lt; t \&gt;</code></td>
+</tr>
+
+<tr>
+<td class="org-left">⟪ t ⟫</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left"><code>\&lt;&lt; t \&gt;&gt;</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-orgc9031ed" class="outline-4">
+<h4 id="orgc9031ed"><span class="section-number-4"> A1.8.7</span> Set theory</h4>
+<div class="outline-text-4" id="text-1-8-7">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Unicode</th>
+<th scope="col" class="org-left">Ascii</th>
+<th scope="col" class="org-left">Emacs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">∈</td>
+<td class="org-left">mem</td>
+<td class="org-left"><code>\in</code></td>
+</tr>
+
+<tr>
+<td class="org-left">∉</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left"><code>\nin</code></td>
+</tr>
+
+<tr>
+<td class="org-left">∩</td>
+<td class="org-left">inter</td>
+<td class="org-left"><code>\i</code></td>
+</tr>
+
+<tr>
+<td class="org-left">∪</td>
+<td class="org-left">union</td>
+<td class="org-left"><code>\un</code></td>
+</tr>
+
+<tr>
+<td class="org-left">⊆</td>
+<td class="org-left">subseteq</td>
+<td class="org-left"><code>\subeq</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-orgfd6a455" class="outline-4">
+<h4 id="orgfd6a455"><span class="section-number-4"> A1.8.8</span> Binary relations</h4>
+<div class="outline-text-4" id="text-1-8-8">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Unicode</th>
+<th scope="col" class="org-left">Ascii</th>
+<th scope="col" class="org-left">Emacs</th>
+<th scope="col" class="org-left">&#xa0;</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">≤</td>
+<td class="org-left">&lt;=</td>
+<td class="org-left"><code>\le</code></td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">≥</td>
+<td class="org-left">&gt;=</td>
+<td class="org-left"><code>\ge</code></td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">∣</td>
+<td class="org-left">dvd</td>
+<td class="org-left"><code>\∣</code></td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">≡</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left"><code>\equiv</code></td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">≈</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left"><code>\eq</code></td>
+<td class="org-left">&#xa0;</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-orgd2b93bf" class="outline-4">
+<h4 id="orgd2b93bf"><span class="section-number-4"> A1.8.9</span> Binary operations</h4>
+<div class="outline-text-4" id="text-1-8-9">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Unicode</th>
+<th scope="col" class="org-left">Ascii</th>
+<th scope="col" class="org-left">Emacs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">∘</td>
+<td class="org-left">comp</td>
+<td class="org-left"><code>\comp</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

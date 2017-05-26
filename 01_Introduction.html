@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:44 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theorem Proving in Lean</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]]Jeremy Avigad, [[http://leodemoura.github.io][Leonardo de Moura]]Leonardo de Moura, [[http://www.cs.cmu.edu/~soonhok][Soonho Kong]]Soonho Kong" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        // Only one of the two following lines, depending on user settings
+        // First allows browser-native MathML display, second forces HTML/CSS
+        :MMLYES: config: ["MMLorHTML.js"], jax: ["input/TeX"],
+        :MMLNO: jax: ["input/TeX", "output/HTML-CSS"],
+        extensions: ["tex2jax.js","TeX/AMSmath.js","TeX/AMSsymbols.js",
+                     "TeX/noUndefined.js"],
+        tex2jax: {
+            inlineMath: [ ["\\(","\\)"] ],
+            displayMath: [ ['$$','$$'], ["\\[","\\]"], ["\\begin{displaymath}","\\end{displaymath}"] ],
+            skipTags: ["script","noscript","style","textarea","pre","code"],
+            ignoreClass: "tex2jax_ignore",
+            processEscapes: false,
+            processEnvironments: true,
+            preview: "TeX"
+        },
+        showProcessingMessages: true,
+        displayAlign: "center",
+        displayIndent: "2em",
+
+        "HTML-CSS": {
+             scale: 100,
+             availableFonts: ["STIX","TeX"],
+             preferredFont: "TeX",
+             webFont: "TeX",
+             imageFont: "TeX",
+             showMathMenu: true,
+        },
+        MMLorHTML: {
+             prefer: {
+                 MSIE:    "MML",
+                 Firefox: "MML",
+                 Opera:   "HTML",
+                 other:   "HTML"
+             }
+        }
+    });
+</script>
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Theorem Proving in Lean</h1>
+
+<div id="outline-container-orgc65ce4b" class="outline-2">
+<h2 id="orgc65ce4b"><span class="section-number-2"> 1</span> Introduction</h2>
+<div class="outline-text-2" id="text-1">
+<div class="warning">
+<p>
+Please note that this is the tutorial for <a target='_blank' href="https://github.com/leanprover/lean2">Lean 2</a>, which allows the use of
+homotopy type theory (HoTT). It is <i>not</i> the <a target='_blank' href="https://leanprover.github.io/introduction_to_lean">tutorial</a> for the
+<a target='_blank' href="https://github.com/leanprover/lean">current version of Lean</a>.
+</p>
+
+</div>
+</div>
+
+<div id="outline-container-orga397b7b" class="outline-3">
+<h3 id="orga397b7b"><span class="section-number-3"> 1.1</span> Computers and Theorem Proving</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+<i>Formal verification</i> involves the use of logical and computational
+methods to establish claims that are expressed in precise mathematical
+terms. These can include ordinary mathematical theorems, as well as
+claims that pieces of hardware or software, network protocols, and
+mechanical and hybrid systems meet their specifications. In practice,
+there is not a sharp distinction between verifying a piece of
+mathematics and verifying the correctness of a system: formal
+verification requires describing hardware and software systems in
+mathematical terms, at which point establishing claims as to their
+correctness becomes a form of theorem proving. Conversely, the proof
+of a mathematical theorem may require a lengthy computation, in which
+case verifying the truth of the theorem requires verifying that the
+computation does what it is supposed to do.
+</p>
+
+<p>
+The gold standard for supporting a mathematical claim is to provide a
+proof, and twentieth-century developments in logic show most if not
+all conventional proof methods can be reduced to a small set of axioms
+and rules in any of a number of foundational systems. With this
+reduction, there are two ways that a computer can help establish a
+claim: it can help find a proof in the first place, and it can help
+verify that a purported proof is correct.
+</p>
+
+<p>
+<i>Automated theorem proving</i> focuses on the "finding"
+aspect. Resolution theorem provers, tableau theorem provers, fast
+satisfiability solvers, and so on provide means of establishing the
+validity of formulas in propositional and first-order logic. Other
+systems provide search procedures and decision procedures for specific
+languages and domains, such as linear or nonlinear expressions over
+the integers or the real numbers. Architectures like SMT
+("satisfiability modulo theories") combine domain-general search
+methods with domain-specific procedures. Computer algebra systems and
+specialized mathematical software packages provide means of
+carrying out mathematical computations, establishing mathematical
+bounds, or finding mathematical objects. A calculation can be viewed
+as a proof as well, and these systems, too, help establish
+mathematical claims.
+</p>
+
+<p>
+Automated reasoning systems strive for power and efficiency, often at
+the expense of guaranteed soundness. Such systems can have bugs, and
+it can be difficult to ensure that the results they deliver are
+correct. In contrast, <i>interactive theorem proving</i> focuses on the
+"verification" aspect of theorem proving, requiring that every claim
+is supported by a proof in a suitable axiomatic foundation. This sets
+a very high standard: every rule of inference and every step of a
+calculation has to be justified by appealing to prior definitions and
+theorems, all the way down to basic axioms and rules. In fact, most
+such systems provide fully elaborated "proof objects" that can be
+communicated to other systems and checked independently. Constructing
+such proofs typically requires much more input and interaction from
+users, but it allows us to obtain deeper and more complex proofs.
+</p>
+
+<p>
+The <i>Lean Theorem Prover</i> aims to bridge the gap between interactive
+and automated theorem proving, by situating automated tools and
+methods in a framework that supports user interaction and the
+construction of fully specified axiomatic proofs. The goal is to
+support both mathematical reasoning and reasoning about complex
+systems, and to verify claims in both domains.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org2c43435" class="outline-3">
+<h3 id="org2c43435"><span class="section-number-3"> 1.2</span> About Lean</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+The <i>Lean</i> project was launched by Leonardo de Moura at Microsoft
+Research Redmond in 2012. It is an ongoing, long-term effort, and
+much of the potential for automation will be realized only gradually
+over time. Lean is released under the Apache 2.0 license, a permissive
+open source license that permits others to use and extend the code and
+mathematical libraries freely.
+</p>
+
+<p>
+There are currently two ways to use Lean. The first is to run it from
+the web: a Javascript version of Lean, a standard library of
+definitions and theorems, and an editor are actually downloaded to
+your browser and run there. This provides a quick and convenient way to
+begin experimenting with the system.
+</p>
+
+<p>
+The second way to use Lean is to install and run it natively on your
+computer. The native version is much faster than the web version, and
+is more flexible in other ways, too. It comes with an Emacs mode that
+offers powerful support for writing and debugging proofs, and is much
+better suited for serious use.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org12af75f" class="outline-3">
+<h3 id="org12af75f"><span class="section-number-3"> 1.3</span> About this Book</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+This book is designed to teach you to develop and verify proofs in
+Lean. Much of the background information you will need in order to do
+this is not specific to Lean at all. To start with, we will explain
+the logical system that Lean is based on, a version of <i>dependent type
+theory</i> that is powerful enough to prove almost any conventional
+mathematical theorem, and expressive enough to do it in a natural
+way. We will explain not only how to define mathematical objects and
+express mathematical assertions in dependent type theory, but also how
+to use it as a language for writing proofs. 
+</p>
+
+<p>
+In fact, Lean supports two versions of dependent type theory. The
+first is a variant of a system known as the <i>Calculus of Inductive
+Constructions</i>[<a href="#Coquand1988">1</a>,<a href="#pfenning:paulin:mohring:89">2</a>], or
+<i>CIC</i>. This is the system used by Lean's standard library, and is the
+focus of this tutorial. The second version of dependent type theory
+implements an axiomatic framework for <a target='_blank' href="http://homotopytypetheory.org/">homotopy type theory</a>,
+which we will discuss in a later chapter.
+</p>
+
+<p>
+Because fully detailed axiomatic proofs are so complicated, the
+challenge of theorem proving is to have the computer fill in as many
+of the details as possible. We will describe various methods to
+support this in dependent type theory. For example, we will discuss
+term rewriting, and Lean's automated methods for simplifying terms and
+expressions automatically. Similarly, we will discuss methods of
+<i>elaboration</i> and <i>type inference</i>, which can be used to support
+flexible forms of algebraic reasoning.
+</p>
+
+<p>
+Finally, of course, we will discuss features that are specific to
+Lean, including the language with which you can communicate with the
+system, and the mechanisms Lean offers for managing complex theories
+and data.
+</p>
+
+<p>
+If you are reading this book within Lean's online tutorial system, you
+will see a copy of the Lean editor at right, with an output buffer
+beneath it. At any point, you can type things into the editor, press
+the "play" button, and see Lean's response. Notice that you can resize
+the various windows if you would like.
+</p>
+
+<p>
+Throughout the text you will find examples of Lean code like the one
+below:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-1' mode="ace/mode/lean" readonly="true">theorem and_commutative (p q : Prop) : p ∧ q → q ∧ p :=
+assume Hpq : p ∧ q,
+have Hp : p, from and.elim_left Hpq,
+have Hq : q, from and.elim_right Hpq,
+show q ∧ p, from and.intro Hq Hp</juicy-ace-editor><div id='lean-full-code-1' style='display:none'>theorem and_commutative (p q : Prop) : p ∧ q → q ∧ p :=
+assume Hpq : p ∧ q,
+have Hp : p, from and.elim_left Hpq,
+have Hq : q, from and.elim_right Hpq,
+show q ∧ p, from and.intro Hq Hp
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-1').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Once again, if you are reading the book online, you will see a button
+that reads "try it yourself." Pressing the button copies the example
+into the Lean editor with enough surrounding context to make the
+example compile correctly, and then runs Lean. We recommend running
+the examples and experimenting with the code on your own as you work
+through the chapters that follow.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org3b785c3" class="outline-3">
+<h3 id="org3b785c3"><span class="section-number-3"> 1.4</span> Acknowledgments</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+This tutorial is an open access project maintained on Github. Many
+people have contributed to the effort, providing corrections,
+suggestions, examples, and text. We are grateful to Ulrik Buchholz,
+Nathan Carter, Amine Chaieb, Floris van Doorn, Anthony Hart, Sean
+Leather, Christopher John Mazey, Daniel Velleman, and Théo Zimmerman
+for their contributions, and we apologize to those whose names we have
+inadvertently omitted.
+</p>
+<div id="bibliography">
+<h2>References</h2>
+
+<table>
+
+<tr valign="top">
+<td align="right" class="bibtexnumber">
+[<a name="Coquand1988">1</a>]
+</td>
+<td class="bibtexitem">
+Thierry Coquand and Gerard Huet.
+ The calculus of constructions.
+ <em>Inf. Comput.</em>, 76(2-3):95--120, February 1988.
+[&nbsp;<a href="lean_bib.html#Coquand1988">bib</a>&nbsp;| 
+<a href="http://dx.doi.org/10.1016/0890-5401(88)90005-3">DOI</a>&nbsp;| 
+<a href="http://dx.doi.org/10.1016/0890-5401(88)90005-3">http</a>&nbsp;]
+
+</td>
+</tr>
+
+
+<tr valign="top">
+<td align="right" class="bibtexnumber">
+[<a name="pfenning:paulin:mohring:89">2</a>]
+</td>
+<td class="bibtexitem">
+Frank Pfenning and Christine Paulin-Mohring.
+ Inductively defined types in the calculus of constructions.
+ In Michael&nbsp;G. Main, Austin Melton, Michael&nbsp;W. Mislove, and David&nbsp;A.
+  Schmidt, editors, <em>Mathematical Foundations of Programming Semantics, 5th
+  International Conference, Tulane University, New Orleans, Louisiana, USA,
+  March 29 - April 1, 1989, Proceedings</em>, volume 442 of <em>Lecture Notes in
+  Computer Science</em>, pages 209--228. Springer, 1989.
+[&nbsp;<a href="lean_bib.html#pfenning:paulin:mohring:89">bib</a>&nbsp;| 
+<a href="http://dx.doi.org/10.1007/BFb0040259">DOI</a>&nbsp;| 
+<a href="http://dx.doi.org/10.1007/BFb0040259">http</a>&nbsp;]
+
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

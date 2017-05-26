@@ -1,0 +1,1154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:45 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theorem Proving in Lean</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]]Jeremy Avigad, [[http://leodemoura.github.io][Leonardo de Moura]]Leonardo de Moura" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        // Only one of the two following lines, depending on user settings
+        // First allows browser-native MathML display, second forces HTML/CSS
+        :MMLYES: config: ["MMLorHTML.js"], jax: ["input/TeX"],
+        :MMLNO: jax: ["input/TeX", "output/HTML-CSS"],
+        extensions: ["tex2jax.js","TeX/AMSmath.js","TeX/AMSsymbols.js",
+                     "TeX/noUndefined.js"],
+        tex2jax: {
+            inlineMath: [ ["\\(","\\)"] ],
+            displayMath: [ ['$$','$$'], ["\\[","\\]"], ["\\begin{displaymath}","\\end{displaymath}"] ],
+            skipTags: ["script","noscript","style","textarea","pre","code"],
+            ignoreClass: "tex2jax_ignore",
+            processEscapes: false,
+            processEnvironments: true,
+            preview: "TeX"
+        },
+        showProcessingMessages: true,
+        displayAlign: "center",
+        displayIndent: "2em",
+
+        "HTML-CSS": {
+             scale: 100,
+             availableFonts: ["STIX","TeX"],
+             preferredFont: "TeX",
+             webFont: "TeX",
+             imageFont: "TeX",
+             showMathMenu: true,
+        },
+        MMLorHTML: {
+             prefer: {
+                 MSIE:    "MML",
+                 Firefox: "MML",
+                 Opera:   "HTML",
+                 other:   "HTML"
+             }
+        }
+    });
+</script>
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Theorem Proving in Lean</h1>
+
+<div id="outline-container-org2368ca7" class="outline-2">
+<h2 id="org2368ca7"><span class="section-number-2"> 7</span> Induction and Recursion</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+Other than the type universes and Pi types, inductively defined types
+provide the only means of defining new types in the Calculus of
+Inductive Constructions. We have also seen that, fundamentally, the
+constructors and the recursors provide the only means of defining
+functions on these types. By the propositions-as-types correspondence,
+this means that induction is the fundamental method of proof for these
+types.
+</p>
+
+<p>
+Working with induction and recursion is therefore fundamental to
+working in the Calculus of Inductive Constructions. For that reason
+Lean provides more natural ways of defining recursive functions,
+performing pattern matching, and writing inductive proofs. Behind the
+scenes, these are "compiled" down to recursors, using some of the
+auxiliary definitions described in Section <a href="#" onclick="myModule.loadTutorial('06_Inductive_Types.html', 'Automatically_Generated_Constructions')">Automatically Generated
+Constructions</a>. Thus, the function definition package, which performs
+this reduction, is not part of the trusted code base.
+</p>
+</div>
+
+<div id="outline-container-orgfc84c6e" class="outline-3">
+<h3 id="orgfc84c6e"><span class="section-number-3"> 7.1</span> Pattern Matching</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+The <code>cases_on</code> recursor can be used to define functions and prove
+theorems by cases. But complicated definitions may use several nested
+<code>cases_on</code> applications, and may be hard to read and understand.
+Pattern matching provides a more convenient and standard way of
+defining functions and proving theorems. Lean supports a very general
+form of pattern matching called <i>dependent pattern matching</i>.
+</p>
+
+<p>
+A pattern-matching definition is of the following form:
+</p>
+<div class="org-src-container">
+
+<pre class="src src-text">definition [name] [parameters] : [domain] &#8594; [codomain]
+| [name] [patterns_1] := [value_1]
+...
+| [name] [patterns_n] := [value_n]
+</pre>
+</div>
+<p>
+The parameters are fixed, and each assignment defines the value of the
+function for a different case specified by the given pattern. As a
+first example, we define the function <code>sub2</code> for natural numbers:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-2' mode="ace/mode/lean" readonly="true">open nat
+
+definition sub2 : nat → nat
+| sub2 0     := 0
+| sub2 1     := 0
+| sub2 (a+2) := a
+
+example : sub2 5 = 3 := rfl
+</juicy-ace-editor><div id='lean-full-code-2' style='display:none'>open nat
+
+definition sub2 : nat → nat
+| sub2 0     := 0
+| sub2 1     := 0
+| sub2 (a+2) := a
+
+example : sub2 5 = 3 := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-2').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The default compilation method guarantees that the pattern matching equations
+hold definitionally.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-3' mode="ace/mode/lean" readonly="true">example : sub2 0 = 0 := rfl
+
+example : sub2 1 = 0 := rfl
+
+example (a : nat) : sub2 (a + 2) = a := rfl</juicy-ace-editor><div id='lean-full-code-3' style='display:none'>open nat
+
+definition sub2 : nat → nat
+| sub2 0     := 0
+| sub2 1     := 0
+| sub2 (a+2) := a
+
+example : sub2 0 = 0 := rfl
+
+example : sub2 1 = 0 := rfl
+
+example (a : nat) : sub2 (a + 2) = a := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-3').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+We can use the command <code>print definition</code> to inspect how our definition was compiled into
+recursors.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-4' mode="ace/mode/lean" readonly="true">print definition sub2</juicy-ace-editor><div id='lean-full-code-4' style='display:none'>open nat
+
+definition sub2 : nat → nat
+| sub2 0     := 0
+| sub2 1     := 0
+| sub2 (a+2) := a
+
+print definition sub2
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-4').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+We will say a term is a <i>constructor application</i> if it is of the form
+<code>c a_1 ... a_n</code> where <code>c</code> is the constructor of some inductive
+datatype.  Note that in the definition <code>sub2</code>, the terms <code>1</code> and <code>a+2</code>
+are not constructor applications.  However, the compiler normalizes
+them at compilation time, and obtains the constructor applications
+<code>succ zero</code> and <code>succ (succ a)</code> respectively. This normalization step
+is just a convenience that allows us to write definitions resembling
+the ones found in textbooks. There is no magic here: the compiler
+simply uses the kernel's ordinary evaluation mechanism.  If we had
+written <code>2+a</code>, the definition would be rejected since <code>2+a</code> does not
+normalize into a constructor application.
+</p>
+
+<p>
+In the next example, we use pattern-matching to define Boolean
+negation <code>bnot</code>, and proving <code>bnot (bnot b) = b</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-5' mode="ace/mode/lean" readonly="true">open bool
+
+definition bnot : bool → bool
+| bnot tt := ff
+| bnot ff := tt
+
+theorem bnot_bnot : ∀ (b : bool), bnot (bnot b) = b
+| bnot_bnot tt := rfl    -- proof that bnot (bnot tt) = tt 
+| bnot_bnot ff := rfl    -- proof that bnot (bnot ff) = ff
+</juicy-ace-editor><div id='lean-full-code-5' style='display:none'>open bool
+
+definition bnot : bool → bool
+| bnot tt := ff
+| bnot ff := tt
+
+theorem bnot_bnot : ∀ (b : bool), bnot (bnot b) = b
+| bnot_bnot tt := rfl    -- proof that bnot (bnot tt) = tt 
+| bnot_bnot ff := rfl    -- proof that bnot (bnot ff) = ff
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-5').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+As described in Chapter <a href="#" onclick="myModule.loadTutorial('06_Inductive_Types.html', 'Inductive_Types')">Inductive Types</a>, Lean inductive datatypes can
+be parametric. The following example defines the <code>tail</code> function using
+pattern matching.  The argument <code>A : Type</code> is a parameter and occurs
+before the colon to indicate it does not participate in the pattern
+matching. Lean allows parameters to occur after <code>:</code>, but it cannot
+pattern match on them.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-6' mode="ace/mode/lean" readonly="true">import data.list
+open list
+
+definition tail {A : Type} : list A → list A
+| tail nil      := nil
+| tail (h :: t) := t
+
+-- Parameter A may occur after ':'
+definition tail2 : Π {A : Type}, list A → list A
+| tail2 (@nil A) := (@nil A)
+| tail2 (h :: t) := t
+
+-- @ is allowed on the left-hand-side
+definition tail3 : Π {A : Type}, list A → list A
+| @tail3 A nil      := nil
+| @tail3 A (h :: t) := t
+
+-- A is explicit parameter
+definition tail4 : Π (A : Type), list A → list A
+| tail4 A nil      := nil
+| tail4 A (h :: t) := t
+</juicy-ace-editor><div id='lean-full-code-6' style='display:none'>import data.list
+open list
+
+definition tail {A : Type} : list A → list A
+| tail nil      := nil
+| tail (h :: t) := t
+
+-- Parameter A may occur after ':'
+definition tail2 : Π {A : Type}, list A → list A
+| tail2 (@nil A) := (@nil A)
+| tail2 (h :: t) := t
+
+-- @ is allowed on the left-hand-side
+definition tail3 : Π {A : Type}, list A → list A
+| @tail3 A nil      := nil
+| @tail3 A (h :: t) := t
+
+-- A is explicit parameter
+definition tail4 : Π (A : Type), list A → list A
+| tail4 A nil      := nil
+| tail4 A (h :: t) := t
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-6').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-orga4959ed" class="outline-3">
+<h3 id="orga4959ed"><span class="section-number-3"> 7.2</span> Structural Recursion and Induction</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+The function definition package supports structural recursion, that
+is, recursive applications where one of the arguments is a subterm of
+the corresponding term on the left-hand-side. Later, we describe how
+to compile recursive equations using well-founded recursion.  The main
+advantage of the default compilation method is that the recursive
+equations hold definitionally.
+</p>
+
+<p>
+Here are some examples from the last chapter, written in the new
+style:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-7' mode="ace/mode/lean" readonly="true">definition add : nat → nat → nat
+| add m zero     := m
+| add m (succ n) := succ (add m n)
+
+infix `+` := add
+
+theorem add_zero (m : nat) : m + zero = m := rfl
+theorem add_succ (m n : nat) : m + succ n = succ (m + n) := rfl
+
+theorem zero_add : ∀ n, zero + n = n
+| zero_add zero     := rfl
+| zero_add (succ n) := eq.subst (zero_add n) rfl
+
+definition mul : nat → nat → nat
+| mul n zero     := zero
+| mul n (succ m) := mul n m + m</juicy-ace-editor><div id='lean-full-code-7' style='display:none'>namespace hide
+
+inductive nat : Type :=
+| zero : nat
+| succ : nat → nat
+
+namespace nat
+
+definition add : nat → nat → nat
+| add m zero     := m
+| add m (succ n) := succ (add m n)
+
+infix `+` := add
+
+theorem add_zero (m : nat) : m + zero = m := rfl
+theorem add_succ (m n : nat) : m + succ n = succ (m + n) := rfl
+
+theorem zero_add : ∀ n, zero + n = n
+| zero_add zero     := rfl
+| zero_add (succ n) := eq.subst (zero_add n) rfl
+
+definition mul : nat → nat → nat
+| mul n zero     := zero
+| mul n (succ m) := mul n m + m
+
+end nat
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-7').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The "definition" of <code>zero_add</code> makes it clear that proof by induction
+is really a form of induction in Lean.
+</p>
+
+<p>
+As with definition by pattern matching, parameters to a structural
+recursion or induction may appear before the colon. Such parameters
+are simply added to the local context before the definition is
+processed. For example, the definition of addition may be written as
+follows:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-8' mode="ace/mode/lean" readonly="true">definition add (m : nat) : nat → nat
+| add zero     := m
+| add (succ n) := succ (add n)</juicy-ace-editor><div id='lean-full-code-8' style='display:none'>namespace hide
+
+inductive nat : Type :=
+| zero : nat
+| succ : nat → nat
+
+namespace nat
+
+definition add (m : nat) : nat → nat
+| add zero     := m
+| add (succ n) := succ (add n)
+
+end nat
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-8').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+This may seem a little odd, but you should read the definition as
+follows: "Fix <code>m</code>, and define the function which adds something to <code>m</code>
+recursively, as follows. To add zero, return <code>m</code>. To add the successor
+of <code>n</code>, first add <code>n</code>, and then take the successor." The mechanism
+for adding parameters to the local context is what makes it possible
+to process match expressions within terms, as described below.
+</p>
+
+<p>
+A more interesting example of structural recursion is given by the
+Fibonacci function <code>fib</code>. The subsequent theorem, <code>fib_pos</code>, combines
+pattern matching, recursive equations, and calculational proof.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-9' mode="ace/mode/lean" readonly="true">import data.nat
+open nat algebra
+
+definition fib : nat → nat
+| fib 0     := 1
+| fib 1     := 1
+| fib (a+2) := fib (a+1) + fib a
+
+-- the defining equations hold definitionally
+example : fib 0 = 1 := rfl
+example : fib 1 = 1 := rfl
+example (a : nat) : fib (a+2) = fib (a+1) + fib a := rfl
+
+-- fib is always positive
+theorem fib_pos : ∀ n, 0 &lt; fib n
+| fib_pos 0     := show 0 &lt; 1, from zero_lt_succ 0
+| fib_pos 1     := show 0 &lt; 1, from zero_lt_succ 0
+| fib_pos (a+2) := show 0 &lt; fib (a+1) + fib a, from calc
+    0 = 0 + 0             : rfl
+  ... &lt; fib (a+1) + 0     : add_lt_add_right (fib_pos (a+1)) 0
+  ... &lt; fib (a+1) + fib a : add_lt_add_left  (fib_pos a)     (fib (a+1))
+</juicy-ace-editor><div id='lean-full-code-9' style='display:none'>import data.nat
+open nat algebra
+
+definition fib : nat → nat
+| fib 0     := 1
+| fib 1     := 1
+| fib (a+2) := fib (a+1) + fib a
+
+-- the defining equations hold definitionally
+example : fib 0 = 1 := rfl
+example : fib 1 = 1 := rfl
+example (a : nat) : fib (a+2) = fib (a+1) + fib a := rfl
+
+-- fib is always positive
+theorem fib_pos : ∀ n, 0 &lt; fib n
+| fib_pos 0     := show 0 &lt; 1, from zero_lt_succ 0
+| fib_pos 1     := show 0 &lt; 1, from zero_lt_succ 0
+| fib_pos (a+2) := show 0 &lt; fib (a+1) + fib a, from calc
+    0 = 0 + 0             : rfl
+  ... &lt; fib (a+1) + 0     : add_lt_add_right (fib_pos (a+1)) 0
+  ... &lt; fib (a+1) + fib a : add_lt_add_left  (fib_pos a)     (fib (a+1))
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-9').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Another classic example is the list <code>append</code> function.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-10' mode="ace/mode/lean" readonly="true">import data.list
+open list
+
+definition append {A : Type} : list A → list A → list A
+| append nil    l := l
+| append (h::t) l := h :: append t l
+
+example : append [(1 : ℕ), 2, 3] [4, 5] = [1, 2, 3, 4, 5] := rfl
+</juicy-ace-editor><div id='lean-full-code-10' style='display:none'>import data.list
+open list
+
+definition append {A : Type} : list A → list A → list A
+| append nil    l := l
+| append (h::t) l := h :: append t l
+
+example : append [(1 : ℕ), 2, 3] [4, 5] = [1, 2, 3, 4, 5] := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-10').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgadf8337" class="outline-3">
+<h3 id="orgadf8337"><span class="section-number-3"> 7.3</span> Dependent Pattern-Matching</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+All the examples we have seen so far can be easily written
+using <code>cases_on</code> and <code>rec_on</code>. However, this is not the case
+with indexed inductive families, such as <code>vector A n</code>.
+A lot of boilerplate code needs to be written to define
+very simple functions such as <code>map</code>, <code>zip</code>, and <code>unzip</code> using
+recursors.
+</p>
+
+<p>
+To understand the difficulty, consider what it would take to define a
+function <code>tail</code> which takes a vector <code>v : vector A (succ n)</code> and
+deletes the first element. A first thought might be to use the
+<code>cases_on</code> function:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-11' mode="ace/mode/lean" readonly="true">open nat
+
+inductive vector (A : Type) : nat → Type :=
+| nil {} : vector A zero
+| cons   : Π {n}, A → vector A n → vector A (succ n)
+
+open vector
+notation h :: t := cons h t
+
+check @vector.cases_on
+-- Π {A : Type}
+--   {C : Π (a : ℕ), vector A a → Type}
+--   {a : ℕ}
+--   (n : vector A a),
+--   (e1 : C 0 nil)
+--   (e2 : Π {n : ℕ} (a : A) (a_1 : vector A n), C (succ n) (cons a a_1)),
+--   C a n</juicy-ace-editor><div id='lean-full-code-11' style='display:none'>namespace hide
+open nat
+
+inductive vector (A : Type) : nat → Type :=
+| nil {} : vector A zero
+| cons   : Π {n}, A → vector A n → vector A (succ n)
+
+open vector
+notation h :: t := cons h t
+
+check @vector.cases_on
+-- Π {A : Type}
+--   {C : Π (a : ℕ), vector A a → Type}
+--   {a : ℕ}
+--   (n : vector A a),
+--   (e1 : C 0 nil)
+--   (e2 : Π {n : ℕ} (a : A) (a_1 : vector A n), C (succ n) (cons a a_1)),
+--   C a n
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-11').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+But what value should we return in the <code>nil</code> case? Something funny is
+going on: if <code>v</code> has type <code>vector A (succ n)</code>, it <i>can't</i> be nil, but
+it is not clear how to tell that to <code>cases_on</code>.
+</p>
+
+<p>
+One standard solution is to define an auxiliary function:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-12' mode="ace/mode/lean" readonly="true">definition tail_aux {A : Type} {n m : nat} (v : vector A m) :
+    m = succ n → vector A n :=
+vector.cases_on v
+  (assume H : 0 = succ n, nat.no_confusion H)
+  (take m (a : A) w : vector A m,
+    assume H : succ m = succ n,
+      have H1 : m = n, from succ.inj H,
+      eq.rec_on H1 w)
+
+definition tail {A : Type} {n : nat} (v : vector A (succ n)) : vector A n :=
+tail_aux v rfl</juicy-ace-editor><div id='lean-full-code-12' style='display:none'>import data.examples.vector
+open nat vector
+
+definition tail_aux {A : Type} {n m : nat} (v : vector A m) :
+    m = succ n → vector A n :=
+vector.cases_on v
+  (assume H : 0 = succ n, nat.no_confusion H)
+  (take m (a : A) w : vector A m,
+    assume H : succ m = succ n,
+      have H1 : m = n, from succ.inj H,
+      eq.rec_on H1 w)
+
+definition tail {A : Type} {n : nat} (v : vector A (succ n)) : vector A n :=
+tail_aux v rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-12').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the <code>nil</code> case, <code>m</code> is instantiated to <code>0</code>, and <code>no_confusion</code>
+(discussed in Section <a href="#" onclick="myModule.loadTutorial('06_Inductive_Types.html', 'Automatically_Generated_Constructions')">Automatically Generated Constructions</a>) makes use
+of the fact that <code>0 = succ n</code> cannot occur. Otherwise, <code>v</code> is of the
+form <code>a :: w</code>, and we can simply return <code>w</code>, after casting it from a
+vector of length <code>m</code> to a vector of length <code>n</code>.
+</p>
+
+<p>
+The difficulty in defining <code>tail</code> is to maintain the relationships
+between the indices.  The hypothesis <code>e : m = succ n</code> in <code>tail_aux</code> is
+used to "communicate" the relationship between <code>n</code> and the index
+associated with the minor premise. Moreover, the <code>zero = succ n</code> case
+is "unreachable," and the canonical  way to discard such a case is to
+use <code>no_confusion</code>.
+</p>
+
+<p>
+The <code>tail</code> function is, however, easy to define using recursive
+equations, and the function definition package generates all the
+boilerplate code automatically for us. 
+</p>
+
+<p>
+Here are a number of examples:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-13' mode="ace/mode/lean" readonly="true">definition head {A : Type} : Π {n}, vector A (succ n) → A
+| head (h :: t) := h
+
+definition tail {A : Type} : Π {n}, vector A (succ n) → vector A n
+| tail (h :: t) := t
+
+theorem eta {A : Type} : ∀ {n} (v : vector A (succ n)), head v :: tail v = v
+| eta (h::t) := rfl
+
+definition map {A B C : Type} (f : A → B → C)
+               : Π {n : nat}, vector A n → vector B n → vector C n
+| map nil     nil     := nil
+| map (a::va) (b::vb) := f a b :: map va vb
+
+definition zip {A B : Type} : Π {n}, vector A n → vector B n → vector (A × B) n
+| zip nil nil         := nil
+| zip (a::va) (b::vb) := (a, b) :: zip va vb</juicy-ace-editor><div id='lean-full-code-13' style='display:none'>import data.examples.vector
+open nat vector prod
+
+definition head {A : Type} : Π {n}, vector A (succ n) → A
+| head (h :: t) := h
+
+definition tail {A : Type} : Π {n}, vector A (succ n) → vector A n
+| tail (h :: t) := t
+
+theorem eta {A : Type} : ∀ {n} (v : vector A (succ n)), head v :: tail v = v
+| eta (h::t) := rfl
+
+definition map {A B C : Type} (f : A → B → C)
+               : Π {n : nat}, vector A n → vector B n → vector C n
+| map nil     nil     := nil
+| map (a::va) (b::vb) := f a b :: map va vb
+
+definition zip {A B : Type} : Π {n}, vector A n → vector B n → vector (A × B) n
+| zip nil nil         := nil
+| zip (a::va) (b::vb) := (a, b) :: zip va vb
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-13').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Note that we can omit recursive equations for "unreachable" cases such
+as <code>head nil</code>. The automatically generated definitions for indexed
+families are far from straightforward. For example:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-14' mode="ace/mode/lean" readonly="true">print map
+/-
+definition map : Π {A : Type} {B : Type} {C : Type},
+  (A → B → C) → (Π {n : ℕ}, vector A n → vector B n → vector C n)
+λ (A : Type) (B : Type) (C : Type) (f : A → B → C) {n : ℕ}
+(a : vector A n) (a_1 : vector B n),
+  nat.brec_on n
+    (λ {n : ℕ} (b : nat.below n) (a : vector A n) (a_1 : vector B n),
+       nat.cases_on n
+         (λ (b : nat.below 0) (a : vector A 0) (a_1 : vector B 0),
+            (λ (t_1 : ℕ) (a_2 : vector A t_1),
+               vector.cases_on a_2
+                 (λ (H_1 : 0 = 0) (H_2 : a == nil),
+                    (λ (t_1 : ℕ) (a_1_1 : vector B t_1),
+                       vector.cases_on a_1_1
+                         (λ (H_1 : 0 = 0) (H_2 : a_1 == nil), nil)
+                         (λ (n : ℕ) (a : B) (a_2 : vector B n)
+                          (H_1 : 0 = succ n),
+                            nat.no_confusion H_1))
+                      0
+                      a_1
+                      (eq.refl 0)
+-/</juicy-ace-editor><div id='lean-full-code-14' style='display:none'>import data.examples.vector
+open nat vector prod
+
+definition map {A B C : Type} (f : A → B → C)
+               : Π {n : nat}, vector A n → vector B n → vector C n
+| map nil     nil     := nil
+| map (a::va) (b::vb) := f a b :: map va vb
+
+print map
+/-
+definition map : Π {A : Type} {B : Type} {C : Type},
+  (A → B → C) → (Π {n : ℕ}, vector A n → vector B n → vector C n)
+λ (A : Type) (B : Type) (C : Type) (f : A → B → C) {n : ℕ}
+(a : vector A n) (a_1 : vector B n),
+  nat.brec_on n
+    (λ {n : ℕ} (b : nat.below n) (a : vector A n) (a_1 : vector B n),
+       nat.cases_on n
+         (λ (b : nat.below 0) (a : vector A 0) (a_1 : vector B 0),
+            (λ (t_1 : ℕ) (a_2 : vector A t_1),
+               vector.cases_on a_2
+                 (λ (H_1 : 0 = 0) (H_2 : a == nil),
+                    (λ (t_1 : ℕ) (a_1_1 : vector B t_1),
+                       vector.cases_on a_1_1
+                         (λ (H_1 : 0 = 0) (H_2 : a_1 == nil), nil)
+                         (λ (n : ℕ) (a : B) (a_2 : vector B n)
+                          (H_1 : 0 = succ n),
+                            nat.no_confusion H_1))
+                      0
+                      a_1
+                      (eq.refl 0)
+-/
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-14').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The <code>map</code> function is even more tedious to define by hand than the
+<code>tail</code> function. We encourage you to try it, using <code>rec_on</code>,
+<code>cases_on</code> and <code>no_confusion</code>.
+</p>
+
+<p>
+The name of the function being defined can be omitted from the
+left-hand side of pattern matching equations. This feature is
+particularly useful when the function name is long or there are many
+cases. When the name is omitted, Lean will silently include <code>@f</code> in
+the left-hand-side of every pattern matching equation, where <code>f</code> is
+the name of the function being defined. Here is an example:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-15' mode="ace/mode/lean" readonly="true">variables {A B : Type}
+definition unzip : Π {n : nat}, vector (A × B) n → vector A n × vector B n
+| zero     nil         := (nil, nil)
+| (succ n) ((a, b)::v) :=
+  match unzip v with
+    (va, vb) := (a :: va, b :: vb)
+  end
+
+example : unzip (((1 : ℕ), (10 : ℕ)) :: (2, 20) :: nil) = 
+            (1 :: 2 :: nil, 10 :: 20 :: nil) :=
+rfl</juicy-ace-editor><div id='lean-full-code-15' style='display:none'>import data.examples.vector
+open nat vector prod
+
+variables {A B : Type}
+definition unzip : Π {n : nat}, vector (A × B) n → vector A n × vector B n
+| zero     nil         := (nil, nil)
+| (succ n) ((a, b)::v) :=
+  match unzip v with
+    (va, vb) := (a :: va, b :: vb)
+  end
+
+example : unzip (((1 : ℕ), (10 : ℕ)) :: (2, 20) :: nil) = 
+            (1 :: 2 :: nil, 10 :: 20 :: nil) :=
+rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-15').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgba41648" class="outline-3">
+<h3 id="orgba41648"><span class="section-number-3"> 7.4</span> Variations on Pattern Matching</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+We say that a set of recursive equations <i>overlaps</i> when there is an
+input that more than one left-hand-side can match. In the following
+definition the input <code>0 0</code> matches the left-hand-side of the first two
+equations. Should the function return <code>1</code> or <code>2</code>?
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-16' mode="ace/mode/lean" readonly="true">definition f : nat → nat → nat
+| f 0     y     := 1
+| f x     0     := 2
+| f (x+1) (y+1) := 3</juicy-ace-editor><div id='lean-full-code-16' style='display:none'>open nat
+
+definition f : nat → nat → nat
+| f 0     y     := 1
+| f x     0     := 2
+| f (x+1) (y+1) := 3
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-16').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Overlapping patterns are often used to succinctly express complex
+patterns in data, and they are allowed in Lean. Lean handles the
+ambiguity by using the first applicable equation. In the example
+above, the following equations hold definitionally:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-17' mode="ace/mode/lean" readonly="true">variables (a b : nat)
+
+example : f 0     0     = 1 := rfl
+example : f 0     (a+1) = 1 := rfl
+example : f (a+1) 0     = 2 := rfl
+example : f (a+1) (b+1) = 3 := rfl</juicy-ace-editor><div id='lean-full-code-17' style='display:none'>open nat
+
+definition f : nat → nat → nat
+| f 0     y     := 1
+| f x     0     := 2
+| f (x+1) (y+1) := 3
+
+variables (a b : nat)
+
+example : f 0     0     = 1 := rfl
+example : f 0     (a+1) = 1 := rfl
+example : f (a+1) 0     = 2 := rfl
+example : f (a+1) (b+1) = 3 := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-17').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Lean also supports <i>wildcard patterns</i>, also known as <i>anonymous
+variables</i>. They are used to create patterns where we don't care about
+the value of a specific argument.  In the function <code>f</code> defined above,
+the values of <code>x</code> and <code>y</code> are not used in the right-hand-side. Here is
+the same example using wildcards:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-18' mode="ace/mode/lean" readonly="true">open nat
+definition f : nat → nat → nat
+| f 0  _  := 1
+| f _  0  := 2
+| f _  _  := 3
+variables (a b : nat)
+example : f 0     0     = 1 := rfl
+example : f 0     (a+1) = 1 := rfl
+example : f (a+1) 0     = 2 := rfl
+example : f (a+1) (b+1) = 3 := rfl
+</juicy-ace-editor><div id='lean-full-code-18' style='display:none'>open nat
+definition f : nat → nat → nat
+| f 0  _  := 1
+| f _  0  := 2
+| f _  _  := 3
+variables (a b : nat)
+example : f 0     0     = 1 := rfl
+example : f 0     (a+1) = 1 := rfl
+example : f (a+1) 0     = 2 := rfl
+example : f (a+1) (b+1) = 3 := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-18').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Some functional languages support <i>incomplete patterns</i>. In these
+languages, the interpreter produces an exception or returns an
+arbitrary value for incomplete cases. We can simulate the arbitrary
+value approach using the <code>inhabited</code> type class, discussed in Chapter
+<a href="#" onclick="myModule.loadTutorial('09_Type_Classes.html', 'Type_Classes')">Type Classes</a>.  Roughly, an element of <code>inhabited A</code> is simply a
+witness to the fact that there is an element of <code>A</code>; in Chapter <a href="#" onclick="myModule.loadTutorial('09_Type_Classes.html', 'Type_Classes')">Type
+Classes</a>, we will see that Lean can be instructed that suitable base
+types are inhabited, and can automatically infer that other
+constructed types are inhabited on that basis. On this basis, the
+standard library provides an arbitrary element, <code>arbitrary A</code>, of any
+inhabited type.
+</p>
+
+<p>
+We can also use the type <code>option A</code> to simulate incomplete patterns.
+The idea is to return <code>some a</code> for the provided patterns, and use
+<code>none</code> for the incomplete cases. The following example demonstrates
+both approaches.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-19' mode="ace/mode/lean" readonly="true">open nat option
+
+definition f1 : nat → nat → nat
+| f1 0  _  := 1
+| f1 _  0  := 2
+| f1 _  _  := arbitrary nat   -- the "incomplete" case
+
+variables (a b : nat)
+
+example : f1 0     0     = 1 := rfl
+example : f1 0     (a+1) = 1 := rfl
+example : f1 (a+1) 0     = 2 := rfl
+example : f1 (a+1) (b+1) = arbitrary nat := rfl
+
+definition f2 : nat → nat → option nat
+| f2 0  _  := some 1
+| f2 _  0  := some 2
+| f2 _  _  := none            -- the "incomplete" case
+
+example : f2 0     0     = some 1 := rfl
+example : f2 0     (a+1) = some 1 := rfl
+example : f2 (a+1) 0     = some 2 := rfl
+example : f2 (a+1) (b+1) = none   := rfl
+</juicy-ace-editor><div id='lean-full-code-19' style='display:none'>open nat option
+
+definition f1 : nat → nat → nat
+| f1 0  _  := 1
+| f1 _  0  := 2
+| f1 _  _  := arbitrary nat   -- the "incomplete" case
+
+variables (a b : nat)
+
+example : f1 0     0     = 1 := rfl
+example : f1 0     (a+1) = 1 := rfl
+example : f1 (a+1) 0     = 2 := rfl
+example : f1 (a+1) (b+1) = arbitrary nat := rfl
+
+definition f2 : nat → nat → option nat
+| f2 0  _  := some 1
+| f2 _  0  := some 2
+| f2 _  _  := none            -- the "incomplete" case
+
+example : f2 0     0     = some 1 := rfl
+example : f2 0     (a+1) = some 1 := rfl
+example : f2 (a+1) 0     = some 2 := rfl
+example : f2 (a+1) (b+1) = none   := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-19').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orge8c799a" class="outline-3">
+<h3 id="orge8c799a"><span class="section-number-3"> 7.5</span> Inaccessible Terms</h3>
+<div class="outline-text-3" id="text-1-5">
+<p>
+Sometimes an argument in a dependent matching pattern is not essential
+to the definition, but nonetheless has to be included to specialize
+the type of the expression appropriately. Lean allows users to mark
+such subterms as <i>inaccessible</i> for pattern matching. These
+annotations are essential, for example, when a term occurring in the
+left-hand side is neither a variable nor a constructor application,
+because these are not suitable targets for pattern matching. We can
+view such inaccessible terms as "don't care" components of the
+patterns. You can declare a subterm inaccesible by writing <code>⌞t⌟</code> (the
+brackets are entered as <code>\cll</code> and <code>\clr</code>, for "corner-lower-left" and
+"corner-lower-right") or <code>?(t)</code>.
+</p>
+
+<p>
+The following example can be found in [<a href="#goguen:et:al:06">1</a>]. We
+declare an inductive type that defines the property of "being in the
+image of <code>f</code>". You can view an element of the type <code>image_of f b</code> as
+evidence that <code>b</code> is in the image of <code>f</code>, whereby the constructor
+<code>imf</code> is used to build such evidence. We can then define any function
+<code>f</code> with an "inverse" which takes anything in the image of <code>f</code> to an
+element that is mapped to it. The typing rules forces us to write <code>f
+a</code> for the first argument, but this term is not a variable nor a
+constructor application, and plays no role in the pattern-matching
+definition. To define the function <code>inverse</code> below, we <i>have to</i> mark <code>f
+a</code> inaccessible.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-20' mode="ace/mode/lean" readonly="true">variables {A B : Type}
+inductive image_of (f : A → B) : B → Type :=
+imf : Π a, image_of f (f a)
+
+open image_of
+
+definition inverse : Π f : A → B, Π b, image_of f b → A
+| inverse f ⌞f a⌟ (imf _ _) := a
+</juicy-ace-editor><div id='lean-full-code-20' style='display:none'>variables {A B : Type}
+inductive image_of (f : A → B) : B → Type :=
+imf : Π a, image_of f (f a)
+
+open image_of
+
+definition inverse : Π f : A → B, Π b, image_of f b → A
+| inverse f ⌞f a⌟ (imf _ _) := a
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-20').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Inaccessible terms can also be used to reduce the complexity of the
+generated definition. Dependent pattern matching is compiled using the
+<code>cases_on</code> and <code>no_confusion</code> constructions. The number of instances
+of <code>cases_on</code> introduced by the compiler can be reduced by marking
+parts that only report specialization.  In the next example, we define
+the type of finite ordinals <code>finord n</code>, a type with <code>n</code> inhabitants. We
+also define the function <code>to_nat</code> that maps an element of <code>finord n</code> to
+an elmeent of <code>nat</code>. If we do not mark <code>n+1</code> as inaccessible, the
+compiler will generate a definition containing two <code>cases_on</code>
+expressions. We encourage you to replace <code>⌞n+1⌟</code> with <code>(n+1)</code> in the
+next example and inspect the generated definition using <code>print
+definition to_nat</code>.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-21' mode="ace/mode/lean" readonly="true">open nat
+
+inductive finord : nat → Type :=
+| fz : Π n, finord (succ n)
+| fs : Π {n}, finord n → finord (succ n)
+
+open finord
+
+definition to_nat : Π {n : nat}, finord n → nat
+| @to_nat ⌞n+1⌟ (fz n) := zero
+| @to_nat ⌞n+1⌟ (fs f) := succ (to_nat f)
+</juicy-ace-editor><div id='lean-full-code-21' style='display:none'>open nat
+
+inductive finord : nat → Type :=
+| fz : Π n, finord (succ n)
+| fs : Π {n}, finord n → finord (succ n)
+
+open finord
+
+definition to_nat : Π {n : nat}, finord n → nat
+| @to_nat ⌞n+1⌟ (fz n) := zero
+| @to_nat ⌞n+1⌟ (fs f) := succ (to_nat f)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-21').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org285792d" class="outline-3">
+<h3 id="org285792d"><span class="section-number-3"> 7.6</span> Match Expressions</h3>
+<div class="outline-text-3" id="text-1-6">
+<p>
+Lean also provides a compiler for <i>match-with</i> expressions found in many functional languages.
+It uses essentially the same infrastructure used to compile recursive equations.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-22' mode="ace/mode/lean" readonly="true">definition is_not_zero (a : nat) : bool :=
+match a with
+| zero   := ff
+| succ _ := tt
+end
+
+-- We can use recursive equations and match
+variable {A : Type}
+variable p : A → bool
+
+definition filter : list A → list A
+| filter nil      := nil
+| filter (a :: l) :=
+  match p a with
+  |  tt := a :: filter l
+  |  ff := filter l
+  end
+
+example : filter is_not_zero [1, 0, 0, 3, 0] = [1, 3] := rfl</juicy-ace-editor><div id='lean-full-code-22' style='display:none'>import data.list
+open nat bool list
+
+definition is_not_zero (a : nat) : bool :=
+match a with
+| zero   := ff
+| succ _ := tt
+end
+
+-- We can use recursive equations and match
+variable {A : Type}
+variable p : A → bool
+
+definition filter : list A → list A
+| filter nil      := nil
+| filter (a :: l) :=
+  match p a with
+  |  tt := a :: filter l
+  |  ff := filter l
+  end
+
+example : filter is_not_zero [1, 0, 0, 3, 0] = [1, 3] := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-22').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+You can also use pattern matching in a local <code>have</code> expression:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-23' mode="ace/mode/lean" readonly="true">import data.nat logic
+open bool nat
+
+definition mult : nat → nat → nat :=
+have plus : nat → nat → nat
+| 0        b := b
+| (succ a) b := succ (plus a b),
+have mult : nat → nat → nat
+| 0        b := 0
+| (succ a) b := plus (mult a b) b,
+mult
+</juicy-ace-editor><div id='lean-full-code-23' style='display:none'>import data.nat logic
+open bool nat
+
+definition mult : nat → nat → nat :=
+have plus : nat → nat → nat
+| 0        b := b
+| (succ a) b := succ (plus a b),
+have mult : nat → nat → nat
+| 0        b := 0
+| (succ a) b := plus (mult a b) b,
+mult
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-23').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgae10cd0" class="outline-3">
+<h3 id="orgae10cd0"><span class="section-number-3"> 7.7</span> Other Examples</h3>
+<div class="outline-text-3" id="text-1-7">
+<p>
+In some definitions, we have to help the compiler by providing some
+implicit arguments explicitly in the left-hand-side of recursive
+equations. In such cases, if we don't provide the implicit arguments,
+the elaborator is unable to solve some placeholders
+(i.e.~meta-variables) in the nested match expression.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-24' mode="ace/mode/lean" readonly="true">variables {A B : Type}
+definition unzip : Π {n : nat}, vector (A × B) n → vector A n × vector B n
+| @unzip zero     nil         := (nil, nil)
+| @unzip (succ n) ((a, b)::v) :=
+  match unzip v with
+    (va, vb) := (a :: va, b :: vb)
+  end
+
+example : unzip (((1 : ℕ), (10 : ℕ)) :: (2, 20) :: nil) = 
+  (1 :: 2 :: nil, 10 :: 20 :: nil) :=
+rfl</juicy-ace-editor><div id='lean-full-code-24' style='display:none'>import data.examples.vector
+open nat vector prod
+
+variables {A B : Type}
+definition unzip : Π {n : nat}, vector (A × B) n → vector A n × vector B n
+| @unzip zero     nil         := (nil, nil)
+| @unzip (succ n) ((a, b)::v) :=
+  match unzip v with
+    (va, vb) := (a :: va, b :: vb)
+  end
+
+example : unzip (((1 : ℕ), (10 : ℕ)) :: (2, 20) :: nil) = 
+  (1 :: 2 :: nil, 10 :: 20 :: nil) :=
+rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-24').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Next, we define the function <code>diag</code> which extracts the diagonal of a
+square matrix <code>vector (vector A n) n</code>.  Note that, this function is
+defined by structural induction. However, the term <code>map tail v</code> is not
+a subterm of <code>((a :: va) :: v)</code>. Could you explain what is going on?
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-25' mode="ace/mode/lean" readonly="true">variables {A B : Type}
+
+definition tail : Π {n}, vector A (succ n) → vector A n
+| tail (h :: t) := t
+
+definition map (f : A → B)
+               : Π {n : nat}, vector A n → vector B n
+| map nil     := nil
+| map (a::va) := f a :: map va
+
+definition diag : Π {n : nat}, vector (vector A n) n → vector A n
+| diag nil              := nil
+| diag ((a :: va) :: v) := a :: diag (map tail v)</juicy-ace-editor><div id='lean-full-code-25' style='display:none'>import data.examples.vector
+open nat vector
+
+variables {A B : Type}
+
+definition tail : Π {n}, vector A (succ n) → vector A n
+| tail (h :: t) := t
+
+definition map (f : A → B)
+               : Π {n : nat}, vector A n → vector B n
+| map nil     := nil
+| map (a::va) := f a :: map va
+
+definition diag : Π {n : nat}, vector (vector A n) n → vector A n
+| diag nil              := nil
+| diag ((a :: va) :: v) := a :: diag (map tail v)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-25').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgc8fcb3b" class="outline-3">
+<h3 id="orgc8fcb3b"><span class="section-number-3"> 7.8</span> Well-Founded Recursion</h3>
+<div class="outline-text-3" id="text-1-8">
+<p>
+[TODO: write this section.]
+</p>
+<div id="bibliography">
+<h2>References</h2>
+
+<table>
+
+<tr valign="top">
+<td align="right" class="bibtexnumber">
+[<a name="goguen:et:al:06">1</a>]
+</td>
+<td class="bibtexitem">
+Healfdene Goguen, Conor McBride, and James McKinna.
+ Eliminating dependent pattern matching.
+ In Kokichi Futatsugi, Jean-Pierre Jouannaud, and Jos&eacute;
+  Meseguer, editors, <em>Algebra, Meaning, and Computation, Essays Dedicated
+  to Joseph A. Goguen on the Occasion of His 65th Birthday</em>, volume 4060 of
+  <em>Lecture Notes in Computer Science</em>, pages 521--540. Springer, 2006.
+[&nbsp;<a href="lean_bib.html#goguen:et:al:06">bib</a>&nbsp;| 
+<a href="http://dx.doi.org/10.1007/11780274_27">DOI</a>&nbsp;| 
+<a href="http://dx.doi.org/10.1007/11780274_27">http</a>&nbsp;]
+
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

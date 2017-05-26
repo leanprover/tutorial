@@ -1,0 +1,1318 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:44 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theorem Proving in Lean</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]] Jeremy Avigadand Leonardo de Moura" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Theorem Proving in Lean</h1>
+
+<div id="outline-container-org94a5b5f" class="outline-2">
+<h2 id="org94a5b5f"><span class="section-number-2"> 3</span> Propositions and Proofs</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+By now, you have seen how to define some elementary notions in
+dependent type theory. You have also seen that it is possible to
+import objects that are defined in Lean's library. In this chapter, we
+will explain how mathematical propositions and proofs are expressed in
+the language of dependent type theory, so that you can start proving
+assertions about the objects and notations that have been defined. The
+encoding we use here is specific to the standard library; we will
+discuss proofs in <i>homotopy type theory</i> in a later chapter.
+</p>
+</div>
+
+<div id="outline-container-org2ece44c" class="outline-3">
+<h3 id="org2ece44c"><span class="section-number-3"> 3.1</span> Propositions as Types</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+One strategy for proving assertions about objects defined in the
+language of dependent type theory is to layer an assertion language
+and a proof language on top of the definition language. But there is
+no reason to multiply languages in this way: dependent type theory is
+flexible and expressive, and there is no reason we cannot represent
+assertions and proofs in the same general framework.
+</p>
+
+<p>
+For example, we could introduce a new type, <code>Prop</code>, to represent
+propositions, and constructors to build new propositions from others.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-1' mode="ace/mode/lean" readonly="true">constant and : Prop → Prop → Prop
+constant or : Prop → Prop → Prop
+constant not : Prop → Prop
+constant implies : Prop → Prop → Prop
+
+variables p q r : Prop
+check and p q                      -- Prop
+check or (and p q) r               -- Prop
+check implies (and p q) (and q p)  -- Prop</juicy-ace-editor><div id='lean-full-code-1' style='display:none'>namespace hide
+
+constant and : Prop → Prop → Prop
+constant or : Prop → Prop → Prop
+constant not : Prop → Prop
+constant implies : Prop → Prop → Prop
+
+variables p q r : Prop
+check and p q                      -- Prop
+check or (and p q) r               -- Prop
+check implies (and p q) (and q p)  -- Prop
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-1').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+We could then introduce, for each element <code>p : Prop</code>, another type
+<code>Proof p</code>, for the type of proofs of <code>p</code>. An "axiom" would be constant
+of such a type.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-2' mode="ace/mode/lean" readonly="true">constant Proof : Prop → Type
+
+constant and_comm : Π p q : Prop, Proof (implies (and p q) (and q p))
+
+variables p q : Prop
+check and_comm p q      -- Proof (implies (and p q) (and q p))</juicy-ace-editor><div id='lean-full-code-2' style='display:none'>namespace hide
+
+constant and : Prop → Prop → Prop
+constant or : Prop → Prop → Prop
+constant not : Prop → Prop
+constant implies : Prop → Prop → Prop
+
+constant Proof : Prop → Type
+
+constant and_comm : Π p q : Prop, Proof (implies (and p q) (and q p))
+
+variables p q : Prop
+check and_comm p q      -- Proof (implies (and p q) (and q p))
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-2').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+In addition to axioms, however, we would also need rules to build new
+proofs from old ones. For example, in many proof systems for
+propositional logic, we have the rule of modus ponens:
+</p>
+<blockquote>
+<p>
+From a proof of <code>implies p q</code> and a proof of <code>p</code>, we obtain a proof of <code>q</code>.
+</p>
+</blockquote>
+<p>
+We could represent this as follows:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-3' mode="ace/mode/lean" readonly="true">constant modus_ponens (p q : Prop) : Proof (implies p q) →  Proof p → Proof q</juicy-ace-editor><div id='lean-full-code-3' style='display:none'>namespace hide
+
+constant implies : Prop → Prop → Prop
+constant Proof : Prop → Type
+
+constant modus_ponens (p q : Prop) : Proof (implies p q) →  Proof p → Proof q
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-3').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Systems of natural deduction for propositional logic also typically
+rely on the following rule:
+</p>
+<blockquote>
+<p>
+Suppose that, assuming <code>p</code> as a hypothesis, we have a proof of
+<code>q</code>. Then we can "cancel" the hypothesis and obtain a proof of
+<code>implies p q</code>.
+</p>
+</blockquote>
+<p>
+We could render this as follows:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-4' mode="ace/mode/lean" readonly="true">constant implies_intro (p q : Prop) : (Proof p → Proof q) → Proof (implies p q).</juicy-ace-editor><div id='lean-full-code-4' style='display:none'>namespace hide
+
+constant implies : Prop → Prop → Prop
+constant Proof : Prop → Type
+
+constant implies_intro (p q : Prop) : (Proof p → Proof q) → Proof (implies p q).
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-4').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+This approach would provide us with a reasonable way of building
+assertions and proofs. Determining that an expression <code>t</code> is a correct
+proof of assertion <code>p</code> would then simply be a matter of checking that
+<code>t</code> has type <code>Proof p</code>.
+</p>
+
+<p>
+Some simplifications are possible, however. To start with, we can
+avoid writing the term <code>Proof</code> repeatedly by conflating <code>Proof p</code> with
+<code>p</code> itself. In other words, whenever we have <code>p : Prop</code>, we can interpret
+<code>p</code> as a type, namely, the type of its proofs. We can then read <code>t :
+p</code> as the assertion that <code>t</code> is a proof of <code>p</code>.
+</p>
+
+<p>
+Moreover, once we make this identification, the rules for implication
+show that we can pass back and forth between <code>implies p q</code> and <code>p →
+q</code>. In other words, implication between propositions <code>p</code> and <code>q</code>
+corresponds to having a function that takes any element of <code>p</code> to an
+element of <code>q</code>. As a result, the introduction of the connective
+<code>implies</code> is entirely redundant: we can use the usual function space
+constructor <code>p → q</code> from dependent type theory as our notion of
+implication.
+</p>
+
+<p>
+This is the approach followed in the Calculus of Inductive
+Constructions, and hence in Lean as well. The fact that the rules for
+implication in a proof system for natural deduction correspond exactly
+to the rules governing abstraction and application for functions is an
+instance of the <i>Curry-Howard isomorphism</i>, sometimes known as the
+<i>propositions-as-types</i> paradigm. In fact, the type <code>Prop</code> is
+syntactic sugar for <code>Type.{0}</code>, the very bottom of the type hierarchy
+described in the last chapter. <code>Prop</code> has some special features, but
+like the other type universes, it is closed under the arrow
+constructor: if we have <code>p q : Prop</code>, then <code>p → q : Prop</code>.
+</p>
+
+<p>
+There are at least two ways of thinking about propositions as types. To
+some who take a constructive view of logic and mathematics, this is a
+faithful rendering of what it means to be a proposition: a proposition
+<code>p</code> represents a sort of data type, namely, a specification of the type
+of data that constitutes a proof. A proof of <code>p</code> is then simply
+an object <code>t : p</code> of the right type.
+</p>
+
+<p>
+Those not inclined to this ideology can view it, rather, as a simple
+coding trick. To each proposition <code>p</code> we associate a type, which is
+empty if <code>p</code> is false and has a single element, say <code>*</code>, if <code>p</code> is
+true. In the latter case, let us say that (the type associated with)
+<code>p</code> is <i>inhabited</i>. It just so happens that the rules for function
+application and abstraction can conveniently help us keep track of
+which elements of <i>Prop</i> are inhabited. So constructing an element
+<code>t : p</code> tells us that <code>p</code> is indeed true. You can think of the
+inhabitant of <code>p</code> as being the "fact that <code>p</code> is true." A proof of <code>p
+→ q</code> uses "the fact that <code>p</code> is true" to obtain "the fact that <code>q</code> is
+true."
+</p>
+
+<p>
+Indeed, if <code>p : Prop</code> is any proposition, Lean's standard kernel
+treats any two elements <code>t1 t2 : p</code> as being definitionally equal,
+much the same way as it treats <code>(λ x, t)s</code> and <code>t[s/x]</code> as
+definitionally equal. This is known as "proof irrelevance," and is
+consistent with the interpretation in the last paragraph. It means
+that even though we can treat proofs <code>t : p</code> as ordinary objects in
+the language of dependent type theory, they carry no information
+beyond the fact that <code>p</code> is true.
+</p>
+
+<p>
+The two ways we have suggested thinking about the
+propositions-as-types paradigm differ in a fundamental way. From the
+constructive point of view, proofs are abstract mathematical objects
+that are <i>denoted</i> by suitable expressions in dependent type
+theory. In contrast, if we think in terms of the coding trick
+described above, then the expressions themselves do not denote
+anything interesting. Rather, it is the fact that we can write them
+down and check that they are well-typed that ensures that the
+proposition in question is true. In other words, the expressions
+<i>themselves</i> are the proofs.
+</p>
+
+<p>
+In the exposition below, we will slip back and forth between these two
+ways of talking, at times saying that an expression "constructs" or
+"produces" or "returns" a proof of a proposition, and at other times
+simply saying that it "is" such a proof. This is similar to the way
+that computer scientists occasionally blur the distinction between
+syntax and semantics by saying, at times, that a program "computes" a
+certain function, and at other times speaking as though the program
+"is" the function in question.
+</p>
+
+<p>
+In any case, all that matters in the end is that the bottom line is
+clear. To formally express a mathematical assertion in the language of
+dependent type theory, we need to exhibit a term <code>p : Prop</code>. To
+<i>prove</i> that assertion, we need to exhibit a term <code>t : p</code>. Lean's
+task, as a proof assistant, is to help us to construct such a term,
+<code>t</code>, and to verify that it is well-formed and has the correct type.
+</p>
+
+<p>
+Lean also supports an alternative <i>proof relevant kernel</i>, which forms
+the basis for <a target='_blank' href="http://homotopytypetheory.org/">homotopy type theory</a>. We will return to this topic in a
+later chapter.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org07cd587" class="outline-3">
+<h3 id="org07cd587"><span class="section-number-3"> 3.2</span> Working with Propositions as Types</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+In the propositions-as-types paradigm, theorems involving only <code>→</code> can
+be proved using lambda abstraction and application. In Lean, the
+<code>theorem</code> command introduces a new theorem:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-5' mode="ace/mode/lean" readonly="true">constants p q : Prop
+
+theorem t1 : p → q → p := λ Hp : p, λ Hq : q, Hp
+</juicy-ace-editor><div id='lean-full-code-5' style='display:none'>constants p q : Prop
+
+theorem t1 : p → q → p := λ Hp : p, λ Hq : q, Hp
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-5').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+This looks exactly like the definition of the constant function in the
+last chapter, the only difference being that the arguments are
+elements of <code>Prop</code> rather than <code>Type</code>. Intuitively, our proof of <code>p →
+q → p</code> assumes <code>p</code> and <code>q</code> are true, and uses the first hypothesis
+(trivially) to establish that the conclusion, <code>p</code>, is true.
+</p>
+
+<p>
+Note that the <code>theorem</code> command is really a version of the
+<code>definition</code> command: under the propositions and types correspondence,
+proving the theorem <code>p → q → p</code> is really the same as defining an
+element of the associated type. To the kernel type checker, there is no
+difference between the two.
+</p>
+
+<p>
+There are a few pragmatic differences between definitions and
+theorems, however, that you will learn more about in Chapter
+<a href="#" onclick="myModule.loadTutorial('08_Building_Theories_and_Proofs.html', 'Building_Theories_and_Proofs')">Building Theories and Proofs</a>.
+In normal circumstances, it is never necessary to unfold the "definition"
+of a theorem; by proof irrelevance, any two proofs of that theorem are
+definitionally equal. Once the proof of a theorem is complete,
+typically we only need to know that the proof exists; it doesn't
+matter what the proof is. In light of that fact, Lean tags proofs as
+<i>irreducible</i>, which serves as a hint to the parser (more precisely,
+the <i>elaborator</i>) that there is generally no need to unfold it when
+processing a file. Moreover, for efficiency purposes, Lean treats
+theorems as axiomatic constants within the file in which they are
+defined. This makes it possible to process and check theorems in
+parallel, since theorems later in a file do not make use of the
+contents of earlier proofs.
+</p>
+
+<p>
+As with definitions, the <code>print</code> command will show you the proof of a
+theorem, with a slight twist: if you want to print a theorem in the
+same file in which it is defined, you need to use the <code>reveal</code> command
+to force Lean to use the theorem itself, rather than its axiomatic
+surrogate.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-6' mode="ace/mode/lean" readonly="true">theorem t1 : p → q → p := λ Hp : p, λ Hq : q, Hp
+
+reveal t1
+print t1</juicy-ace-editor><div id='lean-full-code-6' style='display:none'>constants p q : Prop
+
+theorem t1 : p → q → p := λ Hp : p, λ Hq : q, Hp
+
+reveal t1
+print t1
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-6').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+(To save space, the online version of Lean does not store proofs of
+theorems in the library, so you cannot print them in the browser
+interface.)
+</p>
+
+<p>
+Notice that the lambda abstractions <code>Hp : p</code> and <code>Hq : q</code> can be
+viewed as temporary assumptions in the proof of <code>t1</code>. Lean provides
+the alternative syntax <code>assume</code> for such a lambda abstraction:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-7' mode="ace/mode/lean" readonly="true">theorem t1 : p → q → p :=
+assume Hp : p,
+assume Hq : q,
+Hp</juicy-ace-editor><div id='lean-full-code-7' style='display:none'>constants p q : Prop
+
+theorem t1 : p → q → p :=
+assume Hp : p,
+assume Hq : q,
+Hp
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-7').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Lean also allows us to specify the type of the final term <code>Hp</code>,
+explicitly, with a <code>show</code> statement.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-8' mode="ace/mode/lean" readonly="true">theorem t1 : p → q → p :=
+assume Hp : p,
+assume Hq : q,
+show p, from Hp</juicy-ace-editor><div id='lean-full-code-8' style='display:none'>constants p q : Prop
+
+theorem t1 : p → q → p :=
+assume Hp : p,
+assume Hq : q,
+show p, from Hp
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-8').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Adding such extra information can improve the clarity of a proof and
+help detect errors when writing a proof. The <code>show</code> command does
+nothing more than annotate the type, and, internally, all the
+presentations of <code>t1</code> that we have seen produce the same term. Lean
+also allows you to use the alternative syntax <code>lemma</code> and <code>corollary</code>
+instead of theorem:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-9' mode="ace/mode/lean" readonly="true">lemma t1 : p → q → p :=
+assume Hp : p,
+assume Hq : q,
+show p, from Hp</juicy-ace-editor><div id='lean-full-code-9' style='display:none'>constants p q : Prop
+
+lemma t1 : p → q → p :=
+assume Hp : p,
+assume Hq : q,
+show p, from Hp
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-9').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+As with ordinary definitions, one can move the lambda-abstracted
+variables to the left of the colon:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-10' mode="ace/mode/lean" readonly="true">theorem t1 (Hp : p) (Hq : q) : p := Hp
+
+check t1 -- p → q → p</juicy-ace-editor><div id='lean-full-code-10' style='display:none'>constants p q : Prop
+
+theorem t1 (Hp : p) (Hq : q) : p := Hp
+
+check t1 -- p → q → p
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-10').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Now we can apply the theorem <code>t1</code> just as a function application.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-11' mode="ace/mode/lean" readonly="true">axiom Hp : p
+
+theorem t2 : q → p := t1 Hp</juicy-ace-editor><div id='lean-full-code-11' style='display:none'>constants p q : Prop
+
+theorem t1 (Hp : p) (Hq : q) : p := Hp
+
+axiom Hp : p
+
+theorem t2 : q → p := t1 Hp
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-11').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Here, the <code>axiom</code> command is alternative syntax for
+<code>constant</code>. Declaring a "constant" <code>Hp : p</code> is tantamount to
+declaring that <code>p</code> is true, as witnessed by <code>Hp</code>. Applying the theorem
+<code>t1 : p → q → p</code> to the fact <code>Hp : p</code> that <code>p</code> is true yields the
+theorem <code>t2 : q → p</code>.
+</p>
+
+<p>
+Notice, by the way, that the original theorem <code>t1</code> is true for <i>any</i>
+propositions <code>p</code> and <code>q</code>, not just the particular constants
+declared. So it would be more natural to define the theorem so that it
+quantifies over those, too:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-12' mode="ace/mode/lean" readonly="true">theorem t1 (p q : Prop) (Hp : p) (Hq : q) : p := Hp
+check t1
+</juicy-ace-editor><div id='lean-full-code-12' style='display:none'>theorem t1 (p q : Prop) (Hp : p) (Hq : q) : p := Hp
+check t1
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-12').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The type of <code>t1</code> is now <code>∀ p q : Prop, p → q → p</code>. We can read this as
+the assertion "for every pair of propositions <code>p q</code>, we have <code>p → q →
+p</code>". The symbol <code>∀</code> is alternate syntax for <code>Π</code>, and later we will see
+how Pi types let us model universal quantifiers more generally. For
+the moment, however, we will focus on theorems in propositional logic,
+generalized over the propositions. We will tend to work in sections
+with variables over the propositions, so that they are generalized for
+us automatically.
+</p>
+
+<p>
+When we generalize <code>t1</code> in that way, we can then apply it to different
+pairs of propositions, to obtain different instances of the general
+theorem.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-13' mode="ace/mode/lean" readonly="true">theorem t1 (p q : Prop) (Hp : p) (Hq : q) : p := Hp
+
+variables p q r s : Prop
+
+check t1 p q                -- p → q → p
+check t1 r s                -- r → s → r
+check t1 (r → s) (s → r)    -- (r → s) → (s → r) → r → s
+
+variable H : r → s
+check t1 (r → s) (s → r) H  -- (s → r) → r → s
+</juicy-ace-editor><div id='lean-full-code-13' style='display:none'>theorem t1 (p q : Prop) (Hp : p) (Hq : q) : p := Hp
+
+variables p q r s : Prop
+
+check t1 p q                -- p → q → p
+check t1 r s                -- r → s → r
+check t1 (r → s) (s → r)    -- (r → s) → (s → r) → r → s
+
+variable H : r → s
+check t1 (r → s) (s → r) H  -- (s → r) → r → s
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-13').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Remember that under the propositions-as-types correspondence, a
+variable <code>H</code> of type <code>r → s</code> can be viewed as the hypothesis, or
+premise, that <code>r → s</code> holds. For that reason, Lean offers the
+alternative syntax, <code>premise</code>, for <code>variable</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-14' mode="ace/mode/lean" readonly="true">premise H : r → s
+check t1 (r → s) (s → r) H</juicy-ace-editor><div id='lean-full-code-14' style='display:none'>theorem t1 (p q : Prop) (Hp : p) (Hq : q) : p := Hp
+
+variables p q r s : Prop
+
+premise H : r → s
+check t1 (r → s) (s → r) H
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-14').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+As another example, let us consider the composition function discussed
+in the last chapter, now with propositions instead of types.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-15' mode="ace/mode/lean" readonly="true">variables p q r s : Prop
+
+theorem t2 (H1 : q → r) (H2 : p → q) : p → r :=
+assume H3 : p,
+show r, from H1 (H2 H3)
+</juicy-ace-editor><div id='lean-full-code-15' style='display:none'>variables p q r s : Prop
+
+theorem t2 (H1 : q → r) (H2 : p → q) : p → r :=
+assume H3 : p,
+show r, from H1 (H2 H3)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-15').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+As a theorem of propositional logic, what does <code>t2</code> say?
+</p>
+
+<p>
+Lean allows the alternative syntax <code>premise</code> and <code>premises</code>
+for <code>variable</code> and <code>variables</code>. This makes sense, of course, for
+variables whose type is an element of <code>Prop</code>. The following definition
+of <code>t2</code> has the same net effect as the preceding one.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-16' mode="ace/mode/lean" readonly="true">variables p q r s : Prop
+premises (H1 : q → r) (H2 : p → q)
+
+theorem t2 : p → r :=
+assume H3 : p,
+show r, from H1 (H2 H3)
+</juicy-ace-editor><div id='lean-full-code-16' style='display:none'>variables p q r s : Prop
+premises (H1 : q → r) (H2 : p → q)
+
+theorem t2 : p → r :=
+assume H3 : p,
+show r, from H1 (H2 H3)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-16').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgf2135dd" class="outline-3">
+<h3 id="orgf2135dd"><span class="section-number-3"> 3.3</span> Propositional Logic</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+Lean defines all the standard logical connectives and notation. The
+propositional connectives come with the following notation:
+</p>
+
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Ascii</th>
+<th scope="col" class="org-left">Unicode</th>
+<th scope="col" class="org-left">Emacs shortcut for unicode</th>
+<th scope="col" class="org-left">Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">true</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">true</td>
+</tr>
+
+<tr>
+<td class="org-left">false</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">false</td>
+</tr>
+
+<tr>
+<td class="org-left">not</td>
+<td class="org-left">¬</td>
+<td class="org-left"><code>\not</code>, <code>\neg</code></td>
+<td class="org-left">not</td>
+</tr>
+
+<tr>
+<td class="org-left">/\</td>
+<td class="org-left">∧</td>
+<td class="org-left"><code>\and</code></td>
+<td class="org-left">and</td>
+</tr>
+
+<tr>
+<td class="org-left">‌\/</td>
+<td class="org-left">∨</td>
+<td class="org-left"><code>\or</code></td>
+<td class="org-left">or</td>
+</tr>
+
+<tr>
+<td class="org-left">-&gt;</td>
+<td class="org-left">→</td>
+<td class="org-left"><code>\to</code>, <code>\r</code>, <code>\implies</code></td>
+<td class="org-left">&#xa0;</td>
+</tr>
+
+<tr>
+<td class="org-left">&lt;-&gt;</td>
+<td class="org-left">↔</td>
+<td class="org-left"><code>\iff</code>, <code>\lr</code></td>
+<td class="org-left">iff</td>
+</tr>
+</tbody>
+</table>
+
+<p>
+They all take values in <code>Prop</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-17' mode="ace/mode/lean" readonly="true">variables p q : Prop
+
+check p → q → p ∧ q
+check ¬p → p ↔ false
+check p ∨ q → q ∨ p
+</juicy-ace-editor><div id='lean-full-code-17' style='display:none'>variables p q : Prop
+
+check p → q → p ∧ q
+check ¬p → p ↔ false
+check p ∨ q → q ∨ p
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-17').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The order of operations is fairly standard: unary negation <code>¬</code> binds
+most strongly, then <code>∧</code> and <code>∨</code>, and finally <code>→</code> and <code>↔</code>. For example,
+<code>a ∧ b → c ∨ d ∧ e</code> means <code>(a ∧ b) → (c ∨ (d ∧ e))</code>. Remember that <code>→</code>
+associates to the right (nothing changes now that the arguments are
+elements of <code>Prop</code>, instead of some other <code>Type</code>), as do the other
+binary connectives. So if we have <code>p q r : Prop</code>, the expression <code>p →
+q → r</code> reads "if <code>p</code>, then if <code>q</code>, then <code>r</code>." This is just the
+"curried" form of <code>p ∧ q → r</code>.
+</p>
+
+<p>
+In the last chapter we observed that lambda abstraction can be viewed
+as an "introduction rule" for <code>→</code>. In the current setting, it shows
+how to "introduce" or establish an implication. Application can be
+viewed as an "elimination rule," showing how to "eliminate" or use an
+implication in a proof. The other propositional connectives are
+defined in the standard library in the file <code>init.datatypes</code>, and
+each comes with its canonical introduction and elimination rules.
+</p>
+</div>
+
+<div id="outline-container-org43579d3" class="outline-4">
+<h4 id="org43579d3"><span class="section-number-4"> 3.3.1</span> Conjunction</h4>
+<div class="outline-text-4" id="text-1-3-1">
+<p>
+The expression <code>and.intro H1 H2</code> creates a proof for <code>p ∧ q</code> using
+proofs <code>H1 : p</code> and <code>H2 : q</code>. It is common to describe <code>and.intro</code> as
+the <i>and-introduction</i> rule. In the next example we use <code>and.intro</code>
+to create a proof of <code>p → q → p ∧ q</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-18' mode="ace/mode/lean" readonly="true">
+example (Hp : p) (Hq : q) : p ∧ q := and.intro Hp Hq
+
+check assume (Hp : p) (Hq : q), and.intro Hp Hq</juicy-ace-editor><div id='lean-full-code-18' style='display:none'>variables p q : Prop
+
+example (Hp : p) (Hq : q) : p ∧ q := and.intro Hp Hq
+
+check assume (Hp : p) (Hq : q), and.intro Hp Hq
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-18').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The <code>example</code> command states a theorem without naming it or storing it
+in the permanent context. Essentially, it just checks that the given
+term has the indicated type. It is convenient for illustration, and we
+will use it often.
+</p>
+
+<p>
+The expression <code>and.elim_left H</code> creates a proof of <code>p</code> from a proof
+<code>H : p ∧ q</code>.  Similarly, <code>and.elim_right H</code> is a proof of <code>q</code>. They
+are commonly known as the right and left <i>and-elimination</i> rules.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-19' mode="ace/mode/lean" readonly="true">example (H : p ∧ q) : p := and.elim_left H
+example (H : p ∧ q) : q := and.elim_right H</juicy-ace-editor><div id='lean-full-code-19' style='display:none'>variables p q : Prop
+example (H : p ∧ q) : p := and.elim_left H
+example (H : p ∧ q) : q := and.elim_right H
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-19').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Because they are so commonly used, the standard library provides the
+abbreviations <code>and.left</code> and <code>and.right</code> for <code>and.elim_left</code> and
+<code>and.elim_right</code>, respectively.
+</p>
+
+<p>
+We can now prove <code>p ∧ q → q ∧ p</code> with the following proof term.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-20' mode="ace/mode/lean" readonly="true">example (H : p ∧ q) : q ∧ p :=
+and.intro (and.right H) (and.left H)</juicy-ace-editor><div id='lean-full-code-20' style='display:none'>variables p q : Prop
+example (H : p ∧ q) : q ∧ p :=
+and.intro (and.right H) (and.left H)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-20').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Notice that and-introduction and and-elimination are similar to the
+pairing and projection operations for the cartesian product. The
+difference is that given <code>Hp : p</code> and <code>Hq : q</code>, <code>and.intro Hp Hq</code> has
+type <code>p ∧ q : Prop</code>, while <code>pair Hp Hq</code> has type <code>p × q : Type</code>. The
+similarity between <code>∧</code> and <code>×</code> is another instance of the Curry-Howard
+isomorphism, but in contrast to implication and the function space
+constructor, <code>∧</code> and <code>×</code> are treated separately in Lean. With the
+analogy, however, the proof we have just constructed is similar to a
+function that swaps the elements of a pair.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org31fdc95" class="outline-4">
+<h4 id="org31fdc95"><span class="section-number-4"> 3.3.2</span> Disjunction</h4>
+<div class="outline-text-4" id="text-1-3-2">
+<p>
+The expression <code>or.intro_left q Hp</code> creates a proof of <code>p ∨ q</code> from a
+proof <code>Hp : p</code>.  Similarly, <code>or.intro_right p Hq</code> creates a proof for
+<code>p ∨ q</code> using a proof <code>Hq : q</code>. These are the left and right
+<i>or-introduction</i> rules.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-21' mode="ace/mode/lean" readonly="true">example (Hp : p) : p ∨ q := or.intro_left q Hp
+example (Hq : q) : p ∨ q := or.intro_right p Hq</juicy-ace-editor><div id='lean-full-code-21' style='display:none'>variables p q : Prop
+example (Hp : p) : p ∨ q := or.intro_left q Hp
+example (Hq : q) : p ∨ q := or.intro_right p Hq
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-21').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The <i>or-elimination</i> rule is slightly more complicated. The idea is
+that we can prove <code>r</code> from <code>p ∨ q</code>, by showing that <code>r</code> follows from
+<code>p</code> and that <code>r</code> follows from <code>q</code>. In other words, it is a proof "by
+cases." In the expression <code>or.elim Hpq Hpr Hqr</code>, <code>or.elim</code> takes three
+arguments, <code>Hpq : p ∨ q</code>, <code>Hpr : p → r</code> and <code>Hqr : q → r</code>, and
+produces a proof of <code>r</code>. In the following example, we use <code>or.elim</code> to
+prove <code>p ∨ q → q ∨ p</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-22' mode="ace/mode/lean" readonly="true">example (H : p ∨ q) : q ∨ p :=
+or.elim H
+  (assume Hp : p,
+    show q ∨ p, from or.intro_right q Hp)
+  (assume Hq : q,
+    show q ∨ p, from or.intro_left p Hq)</juicy-ace-editor><div id='lean-full-code-22' style='display:none'>variables p q r: Prop
+example (H : p ∨ q) : q ∨ p :=
+or.elim H
+  (assume Hp : p,
+    show q ∨ p, from or.intro_right q Hp)
+  (assume Hq : q,
+    show q ∨ p, from or.intro_left p Hq)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-22').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+In most cases, the first argument of <code>or.intro_right</code> and
+<code>or.intro_left</code> can be inferred automatically by Lean. Lean therefore
+provides <code>or.inr</code> and <code>or.inl</code> as shorthands for <code>or.intro_right _</code>
+and <code>or.intro_left _</code>. Thus the proof term above could be written more
+concisely:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-23' mode="ace/mode/lean" readonly="true">example (H : p ∨ q) : q ∨ p := or.elim H (λ Hp, or.inr Hp) (λ Hq, or.inl Hq)</juicy-ace-editor><div id='lean-full-code-23' style='display:none'>variables p q r: Prop
+example (H : p ∨ q) : q ∨ p := or.elim H (λ Hp, or.inr Hp) (λ Hq, or.inl Hq)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-23').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Notice that there is enough information in the full expression for
+Lean to infer the types of <code>Hp</code> and <code>Hq</code> as well. But using the type
+annotations in the longer version makes the proof more readable, and
+can help catch and debug errors.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgeecb48c" class="outline-4">
+<h4 id="orgeecb48c"><span class="section-number-4"> 3.3.3</span> Negation and Falsity</h4>
+<div class="outline-text-4" id="text-1-3-3">
+<p>
+The expression <code>not.intro H</code> produces a proof of <code>¬p</code> from <code>H : p →
+false</code>. That is, we obtain <code>¬p</code> if we can derive a contradiction from
+<code>p</code>. The expression <code>not.elim Hnp Hp</code> produces a proof of <code>false</code> from
+<code>Hp : p</code> and <code>Hnp : ¬p</code>. The next example uses these rules to produce
+a proof of <code>(p → q) → ¬q → ¬p</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-24' mode="ace/mode/lean" readonly="true">example (Hpq : p → q) (Hnq : ¬q) : ¬p :=
+not.intro
+  (assume Hp : p,
+    show false, from not.elim Hnq (Hpq Hp))</juicy-ace-editor><div id='lean-full-code-24' style='display:none'>variables p q : Prop
+example (Hpq : p → q) (Hnq : ¬q) : ¬p :=
+not.intro
+  (assume Hp : p,
+    show false, from not.elim Hnq (Hpq Hp))
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-24').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+In the standard library, <code>¬p</code> is actually an <i>abbreviation</i> for <code>p →
+false</code>, that is, the fact that <code>p</code> implies a contradiction. You can
+check that <code>not.intro</code> then amounts to the introduction rule for
+implication. Similarly, the rule <code>not.elim</code>, that is, the principle
+<code>¬p → p → false</code>, corresponds to function application. In other words,
+<code>¬p → p → false</code> is derived by applying the first argument to the
+second, with the term <code>assume Hnp, assume Hp, Hnp Hp</code>. We can thus
+avoid the use of <code>not.intro</code> and <code>not.elim</code> entirely, in favor of
+abstraction and elimination:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-25' mode="ace/mode/lean" readonly="true">example (Hpq : p → q) (Hnq : ¬q) : ¬p :=
+assume Hp : p, Hnq (Hpq Hp)</juicy-ace-editor><div id='lean-full-code-25' style='display:none'>variables p q : Prop
+example (Hpq : p → q) (Hnq : ¬q) : ¬p :=
+assume Hp : p, Hnq (Hpq Hp)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-25').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The connective <code>false</code> has a single elimination rule, <code>false.elim</code>,
+which expresses the fact that anything follows from a contradiction.
+This rule is sometimes called <i>ex falso</i> (short for <i>ex falso sequitur
+quodlibet</i>), or the <i>principle of explosion</i>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-26' mode="ace/mode/lean" readonly="true">example (Hp : p) (Hnp : ¬p) : q := false.elim (Hnp Hp)</juicy-ace-editor><div id='lean-full-code-26' style='display:none'>variables p q : Prop
+example (Hp : p) (Hnp : ¬p) : q := false.elim (Hnp Hp)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-26').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The arbitrary fact, <code>q</code>, that follows from falsity is an implicit
+argument in <code>false.elim</code> and is inferred automatically. This pattern,
+deriving an arbitrary fact from contradictory hypotheses, is quite
+common, and is represented by <code>absurd</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-27' mode="ace/mode/lean" readonly="true">example (Hp : p) (Hnp : ¬p) : q := absurd Hp Hnp</juicy-ace-editor><div id='lean-full-code-27' style='display:none'>variables p q : Prop
+example (Hp : p) (Hnp : ¬p) : q := absurd Hp Hnp
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-27').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Here, for example, is a proof of <code>¬p → q → (q → p) → r</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-28' mode="ace/mode/lean" readonly="true">example (Hnp : ¬p) (Hq : q) (Hqp : q → p) : r :=
+absurd (Hqp Hq) Hnp</juicy-ace-editor><div id='lean-full-code-28' style='display:none'>variables p q r : Prop
+example (Hnp : ¬p) (Hq : q) (Hqp : q → p) : r :=
+absurd (Hqp Hq) Hnp
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-28').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Incidentally, just as <code>false</code> has only an elimination rule, <code>true</code> has
+only an introduction rule, <code>true.intro : true</code>, sometimes abbreviated
+<code>trivial : true</code>. In other words, <code>true</code> is simply true, and has a
+canonical proof, <code>trivial</code>.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgfeba828" class="outline-4">
+<h4 id="orgfeba828"><span class="section-number-4"> 3.3.4</span> Logical Equivalence</h4>
+<div class="outline-text-4" id="text-1-3-4">
+<p>
+The expression <code>iff.intro H1 H2</code> produces a proof of <code>p ↔ q</code> from
+<code>H1 : p → q</code> and <code>H2 : q → p</code>. The expression <code>iff.elim_left H</code>
+produces a proof of <code>p → q</code> from <code>H : p ↔ q</code>. Similarly,
+<code>iff.elim_right H</code> produces a proof of <code>q → p</code> from <code>H : p ↔ q</code>.  Here
+is a proof of <code>p ∧ q ↔ q ∧ p</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-29' mode="ace/mode/lean" readonly="true">theorem and_swap : p ∧ q ↔ q ∧ p :=
+iff.intro
+  (assume H : p ∧ q,
+    show q ∧ p, from and.intro (and.right H) (and.left H))
+  (assume H : q ∧ p,
+    show p ∧ q, from and.intro (and.right H) (and.left H))
+
+check and_swap p q    -- p ∧ q ↔ q ∧ p</juicy-ace-editor><div id='lean-full-code-29' style='display:none'>variables p q : Prop
+theorem and_swap : p ∧ q ↔ q ∧ p :=
+iff.intro
+  (assume H : p ∧ q,
+    show q ∧ p, from and.intro (and.right H) (and.left H))
+  (assume H : q ∧ p,
+    show p ∧ q, from and.intro (and.right H) (and.left H))
+
+check and_swap p q    -- p ∧ q ↔ q ∧ p
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-29').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Because they represent a form of <i>modus ponens</i>, <code>iff.elim_left</code> and
+<code>iff.elim_right</code> can be abbreviated <code>iff.mp</code> and <code>iff.mpr</code>,
+respectively.  In the next example, we use that theorem to derive <code>q ∧
+p</code> from <code>p ∧ q</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-30' mode="ace/mode/lean" readonly="true">premise H : p ∧ q
+example : q ∧ p := iff.mp (and_swap p q) H</juicy-ace-editor><div id='lean-full-code-30' style='display:none'>variables p q : Prop
+
+theorem and_swap : p ∧ q ↔ q ∧ p :=
+iff.intro
+  (assume H : p ∧ q,
+    show q ∧ p, from and.intro (and.right H) (and.left H))
+  (assume H : q ∧ p,
+    show p ∧ q, from and.intro (and.right H) (and.left H))
+
+premise H : p ∧ q
+example : q ∧ p := iff.mp (and_swap p q) H
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-30').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3780e7c" class="outline-3">
+<h3 id="org3780e7c"><span class="section-number-3"> 3.4</span> Introducing Auxiliary Subgoals</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+This is a good place to introduce another device Lean offers to help
+structure long proofs, namely, the <code>have</code> construct, which introduces
+an auxiliary subgoal in a proof. Here is a small example, adapted from
+the last section:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-31' mode="ace/mode/lean" readonly="true">section
+  variables p q : Prop
+
+  example (H : p ∧ q) : q ∧ p :=
+  have Hp : p, from and.left H,
+  have Hq : q, from and.right H,
+  show q ∧ p, from and.intro Hq Hp
+end</juicy-ace-editor><div id='lean-full-code-31' style='display:none'>section
+  variables p q : Prop
+
+  example (H : p ∧ q) : q ∧ p :=
+  have Hp : p, from and.left H,
+  have Hq : q, from and.right H,
+  show q ∧ p, from and.intro Hq Hp
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-31').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Internally, the expression <code>have H : p, from s, t</code> produces the term
+<code>(λ (H : p), t) s</code>. In other words, <code>s</code> is a proof of <code>p</code>, <code>t</code> is a
+proof of the desired conclusion assuming <code>H : p</code>, and the two are
+combined by a lambda abstraction and application. This simple device
+is extremely useful when it comes to structuring long
+proofs, since we can use intermediate <code>have</code>'s as stepping stones
+leading to the final goal.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org53fcdf3" class="outline-3">
+<h3 id="Classical_Logic"><a id="org53fcdf3"></a><span class="section-number-3"> 3.5</span> Classical Logic</h3>
+<div class="outline-text-3" id="text-Classical_Logic">
+<p>
+The introduction and elimination rules we have seen so far are all
+constructive, which is to say, they reflect a computational
+understanding of the logical connectives based on the
+propositions-as-types correspondence. Ordinary classical logic adds to
+this the law of the excluded middle, <code>p ∨ ¬p</code>. To use this principle,
+you have to open the classical namespace.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-32' mode="ace/mode/lean" readonly="true">open classical
+
+variable p : Prop
+check em p
+</juicy-ace-editor><div id='lean-full-code-32' style='display:none'>open classical
+
+variable p : Prop
+check em p
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-32').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Intuitively, the constructive "or" is very strong: asserting <code>p ∨ q</code>
+amounts to knowing which is the case. If <code>RH</code> represents the Riemann
+hypothesis, a classical mathematician is willing to assert <code>RH ∨ ¬RH</code>,
+even though we cannot yet assert either disjunct.
+</p>
+
+<p>
+One consequence of the law of the excluded middle is the principle of
+double-negation elimination:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-33' mode="ace/mode/lean" readonly="true">theorem dne {p : Prop} (H : ¬¬p) : p :=
+or.elim (em p)
+  (assume Hp : p, Hp)
+  (assume Hnp : ¬p, absurd Hnp H)</juicy-ace-editor><div id='lean-full-code-33' style='display:none'>open classical
+
+theorem dne {p : Prop} (H : ¬¬p) : p :=
+or.elim (em p)
+  (assume Hp : p, Hp)
+  (assume Hnp : ¬p, absurd Hnp H)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-33').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Double-negation elimination allows one to prove any proposition, <code>p</code>,
+by assuming <code>¬p</code> and deriving <code>false</code>, because that amounts to proving
+<code>¬¬p</code>. In other words, double-negation elimination allows one to carry
+out a proof by contradiction, something which is not generally
+possible in constructive logic. As an exercise, you might try proving
+the converse, that is, showing that <code>em</code> can be proved from <code>dne</code>.
+</p>
+
+<p>
+The classical axioms also gives you access to additional
+patterns of proof that can be justified by appeal to <code>em</code>. For
+example, one can carry out a proof by cases:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-34' mode="ace/mode/lean" readonly="true">example (H : ¬¬p) : p :=
+by_cases
+  (assume H1 : p, H1)
+  (assume H1 : ¬p, absurd H1 H)</juicy-ace-editor><div id='lean-full-code-34' style='display:none'>open classical
+
+variable p : Prop
+example (H : ¬¬p) : p :=
+by_cases
+  (assume H1 : p, H1)
+  (assume H1 : ¬p, absurd H1 H)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-34').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Or you can carry out a proof by contradiction:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-35' mode="ace/mode/lean" readonly="true">example (H : ¬¬p) : p :=
+by_contradiction
+  (assume H1 : ¬p,
+    show false, from H H1)</juicy-ace-editor><div id='lean-full-code-35' style='display:none'>open classical
+
+variable p : Prop
+example (H : ¬¬p) : p :=
+by_contradiction
+  (assume H1 : ¬p,
+    show false, from H H1)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-35').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+If you are not used to thinking constructively, it may take some time
+for you to get a sense of where classical reasoning is used. It is
+needed in the following example because, from a constructive
+standpoint, knowing that <code>p</code> and <code>q</code> are not both true does not
+necessarily tell you which one is false:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-36' mode="ace/mode/lean" readonly="true">example (H : ¬ (p ∧ q)) : ¬ p ∨ ¬ q :=
+or.elim (em p)
+  (assume Hp : p,
+    or.inr
+      (show ¬q, from
+        assume Hq : q,
+        H (and.intro Hp Hq)))
+  (assume Hp : ¬p,
+    or.inl Hp)</juicy-ace-editor><div id='lean-full-code-36' style='display:none'>open classical
+
+variables p q : Prop
+example (H : ¬ (p ∧ q)) : ¬ p ∨ ¬ q :=
+or.elim (em p)
+  (assume Hp : p,
+    or.inr
+      (show ¬q, from
+        assume Hq : q,
+        H (and.intro Hp Hq)))
+  (assume Hp : ¬p,
+    or.inl Hp)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-36').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+We will see later that there <i>are</i> situations in constructive logic
+where principles like excluded middle and double-negation elimination
+are permissible, and Lean supports the use of classical reasoning in
+such contexts.
+</p>
+
+<p>
+There are additional classical axioms that are not included by default
+in the standard library. We will discuss these in detail in Chapter
+<a href="#" onclick="myModule.loadTutorial('12_Axioms.html', 'Axioms_and_Computation')">Axioms and Computation</a>.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org34348e1" class="outline-3">
+<h3 id="Examples_of_Propositional_Validities"><a id="org34348e1"></a><span class="section-number-3"> 3.6</span> Examples of Propositional Validities</h3>
+<div class="outline-text-3" id="text-Examples_of_Propositional_Validities">
+<p>
+Lean's standard library contains proofs of many valid statements of
+propositional logic, all of which you are free to use in proofs of
+your own. In this section, we will review some common identities, and
+encourage you to try proving them on your own using the rules
+above.
+</p>
+
+<p>
+The following is a long list of assertions in propositional
+logic. Prove as many as you can, using the rules introduced above to
+replace the <code>sorry</code> placeholders by actual proofs. The ones that
+require classical reasoning are grouped together at the end, while
+the rest are constructively valid.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-37' mode="ace/mode/lean" readonly="true">open classical
+
+variables p q r s : Prop
+
+-- commutativity of ∧ and ∨
+example : p ∧ q ↔ q ∧ p := sorry
+example : p ∨ q ↔ q ∨ p := sorry
+
+-- associativity of ∧ and ∨
+example : (p ∧ q) ∧ r ↔ p ∧ (q ∧ r) := sorry
+example : (p ∨ q) ∨ r ↔ p ∨ (q ∨ r) := sorry
+
+-- distributivity
+example : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := sorry
+example : p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r) := sorry
+
+-- other properties
+example : (p → (q → r)) ↔ (p ∧ q → r) := sorry
+example : ((p ∨ q) → r) ↔ (p → r) ∧ (q → r) := sorry
+example : ¬(p ∨ q) ↔ ¬p ∧ ¬q := sorry
+example : ¬p ∨ ¬q → ¬(p ∧ q) := sorry
+example : ¬(p ∧ ¬ p) := sorry
+example : p ∧ ¬q → ¬(p → q) := sorry
+example : ¬p → (p → q) := sorry
+example : (¬p ∨ q) → (p → q) := sorry
+example : p ∨ false ↔ p := sorry
+example : p ∧ false ↔ false := sorry
+example : ¬(p ↔ ¬p) := sorry
+example : (p → q) → (¬q → ¬p) := sorry
+
+-- these require classical reasoning
+example : (p → r ∨ s) → ((p → r) ∨ (p → s)) := sorry
+example : ¬(p ∧ q) → ¬p ∨ ¬q := sorry
+example : ¬(p → q) → p ∧ ¬q := sorry
+example : (p → q) → (¬p ∨ q) := sorry
+example : (¬q → ¬p) → (p → q) := sorry
+example : p ∨ ¬p := sorry
+example : (((p → q) → p) → p) := sorry
+</juicy-ace-editor><div id='lean-full-code-37' style='display:none'>open classical
+
+variables p q r s : Prop
+
+-- commutativity of ∧ and ∨
+example : p ∧ q ↔ q ∧ p := sorry
+example : p ∨ q ↔ q ∨ p := sorry
+
+-- associativity of ∧ and ∨
+example : (p ∧ q) ∧ r ↔ p ∧ (q ∧ r) := sorry
+example : (p ∨ q) ∨ r ↔ p ∨ (q ∨ r) := sorry
+
+-- distributivity
+example : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := sorry
+example : p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r) := sorry
+
+-- other properties
+example : (p → (q → r)) ↔ (p ∧ q → r) := sorry
+example : ((p ∨ q) → r) ↔ (p → r) ∧ (q → r) := sorry
+example : ¬(p ∨ q) ↔ ¬p ∧ ¬q := sorry
+example : ¬p ∨ ¬q → ¬(p ∧ q) := sorry
+example : ¬(p ∧ ¬ p) := sorry
+example : p ∧ ¬q → ¬(p → q) := sorry
+example : ¬p → (p → q) := sorry
+example : (¬p ∨ q) → (p → q) := sorry
+example : p ∨ false ↔ p := sorry
+example : p ∧ false ↔ false := sorry
+example : ¬(p ↔ ¬p) := sorry
+example : (p → q) → (¬q → ¬p) := sorry
+
+-- these require classical reasoning
+example : (p → r ∨ s) → ((p → r) ∨ (p → s)) := sorry
+example : ¬(p ∧ q) → ¬p ∨ ¬q := sorry
+example : ¬(p → q) → p ∧ ¬q := sorry
+example : (p → q) → (¬p ∨ q) := sorry
+example : (¬q → ¬p) → (p → q) := sorry
+example : p ∨ ¬p := sorry
+example : (((p → q) → p) → p) := sorry
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-37').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The <code>sorry</code> identifier magically produces a proof of anything, or
+provides an object of any data type at all. Of course, it is unsound
+as a proof method &#x2013; for example, you can use it to prove <code>false</code> &#x2013;
+and Lean produces severe warnings when files use or import theorems
+which depend on it. But it is very useful for building long proofs
+incrementally. Start writing the proof from the top down, using
+<code>sorry</code> to fill in subproofs. Make sure Lean accepts the term with all
+the <code>sorry</code>'s; if not, there are errors that you need to correct. Then
+go back and replace each <code>sorry</code> with an actual proof, until no more
+remain.
+</p>
+
+<p>
+Here is another useful trick. Instead of using <code>sorry</code>, you can use an
+underscore <code>_</code> as a placeholder. Recall that this tells Lean that the
+argument is implicit, and should be filled in automatically. If Lean
+tries to do so and fails, it returns with an error message "don't know
+how to synthesize placeholder." This is followed by the type of the
+term it is expecting, and all the objects and hypothesis available in
+the context. In other words, for each unresolved placeholder, Lean
+reports the subgoal that needs to be filled at that point. You can
+then construct a proof by incrementally filling in these placeholders.
+</p>
+
+<p>
+For reference, here are two sample proofs of validities taken from the
+list above.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-38' mode="ace/mode/lean" readonly="true">open classical
+
+variables p q r : Prop
+
+-- distributivity
+example : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+iff.intro
+  (assume H : p ∧ (q ∨ r),
+    have Hp : p, from and.left H,
+    or.elim (and.right H)
+      (assume Hq : q,
+        show (p ∧ q) ∨ (p ∧ r), from or.inl (and.intro Hp Hq))
+      (assume Hr : r,
+        show (p ∧ q) ∨ (p ∧ r), from or.inr (and.intro Hp Hr)))
+  (assume H : (p ∧ q) ∨ (p ∧ r),
+    or.elim H
+      (assume Hpq : p ∧ q,
+        have Hp : p, from and.left Hpq,
+        have Hq : q, from and.right Hpq,
+        show p ∧ (q ∨ r), from and.intro Hp (or.inl Hq))
+      (assume Hpr : p ∧ r,
+        have Hp : p, from and.left Hpr,
+        have Hr : r, from and.right Hpr,
+        show p ∧ (q ∨ r), from and.intro Hp (or.inr Hr)))
+
+-- an example that requires classical reasoning
+example : ¬(p ∧ ¬q) → (p → q) :=
+assume H : ¬(p ∧ ¬q),
+assume Hp : p,
+show q, from
+  or.elim (em q)
+    (assume Hq : q, Hq)
+    (assume Hnq : ¬q, absurd (and.intro Hp Hnq) H)
+</juicy-ace-editor><div id='lean-full-code-38' style='display:none'>open classical
+
+variables p q r : Prop
+
+-- distributivity
+example : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+iff.intro
+  (assume H : p ∧ (q ∨ r),
+    have Hp : p, from and.left H,
+    or.elim (and.right H)
+      (assume Hq : q,
+        show (p ∧ q) ∨ (p ∧ r), from or.inl (and.intro Hp Hq))
+      (assume Hr : r,
+        show (p ∧ q) ∨ (p ∧ r), from or.inr (and.intro Hp Hr)))
+  (assume H : (p ∧ q) ∨ (p ∧ r),
+    or.elim H
+      (assume Hpq : p ∧ q,
+        have Hp : p, from and.left Hpq,
+        have Hq : q, from and.right Hpq,
+        show p ∧ (q ∨ r), from and.intro Hp (or.inl Hq))
+      (assume Hpr : p ∧ r,
+        have Hp : p, from and.left Hpr,
+        have Hr : r, from and.right Hpr,
+        show p ∧ (q ∨ r), from and.intro Hp (or.inr Hr)))
+
+-- an example that requires classical reasoning
+example : ¬(p ∧ ¬q) → (p → q) :=
+assume H : ¬(p ∧ ¬q),
+assume Hp : p,
+show q, from
+  or.elim (em q)
+    (assume Hq : q, Hq)
+    (assume Hnq : ¬q, absurd (and.intro Hp Hnq) H)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-38').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

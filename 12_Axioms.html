@@ -1,0 +1,1629 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:44 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theorem Proving in Lean</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]]Jeremy Avigad, [[http://leodemoura.github.io][Leonardo de Moura]]Leonardo de Moura" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Theorem Proving in Lean</h1>
+
+<div id="outline-container-org2a96eac" class="outline-2">
+<h2 id="Axioms_and_Computation"><a id="org2a96eac"></a><span class="section-number-2"> 12</span> Axioms and Computation</h2>
+<div class="outline-text-2" id="text-Axioms_and_Computation">
+<p>
+We have seen that the version of the Calculus of Inductive
+Constructions that has been implemented in Lean includes Pi types, and
+inductive types, and a nested hierarchy of universes with an
+impredicative, proof-irrelevant <code>Prop</code> at the bottom. In this chapter,
+we consider extensions of the CIC with additional axioms and
+rules. Extending a foundational system in such a way is often
+convenient; it can make it possible to prove more theorems, as well as
+make it easier to prove theorems that could have been proved
+otherwise. But there can be negative consequences of adding additional
+axioms, consequences which may go beyond concerns about their
+correctness. In particular, the use of axioms bears on the
+computational content of definitions and theorems, in ways we will
+explore here.
+</p>
+
+<p>
+Lean is designed to support both computational and classical
+reasoning. Users that are so inclined can stick to a "computationally
+pure" fragment, which guarantees that closed expressions in the system
+evaluate to canonical normal forms. In particular, any closed
+computationally pure expression of type <code>ℕ</code>,  for example,
+denoting a natural number will reduce to a numeral.
+</p>
+
+<p>
+To support classical reasoning, Lean's standard library defines
+one choice axiom, which is justified on a set-theoretic
+interpretation of type theory. In the standard library, the law of the
+excluded middle is a consequence of this axiom.
+The library also imports two semi-constructive (or mildly classical) axioms,
+propositional extensionality and quotients. These
+are used, for example, to develop theories of sets and finite sets.
+Even some computationally inclined users may also wish to use the law
+of the excluded middle to reason about computation. Below we will
+describe the effects that these axioms have on computation aspects of
+the system.
+</p>
+
+<p>
+However, the classical choice axiom (also known as the Hilbert operator) is entirely
+inimical to a computational interpretation of the system,
+which magically produces "data" from a proposition
+asserting its existence. Its use is essential to some classical
+constructions, and users can import it when needed. But expressions
+that depend on this construction lose their computational content, and
+in Lean we are required to mark such definitions as <code>noncomputable</code> to
+flag that fact.
+</p>
+</div>
+
+<div id="outline-container-orgca23917" class="outline-3">
+<h3 id="orgca23917"><span class="section-number-3"> 12.1</span> Historical and Philosophical Context</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+For most of its history, mathematics was essentially computational:
+geometry dealt with constructions of geometric objects, algebra was
+concerned with algorithmic solutions to systems of equations, and
+analysis provided means to compute the future behavior of systems
+evolving over time. From the proof of a theorem to the effect that
+"for every <code>x</code>, there is a <code>y</code> such that &#x2026;", it was generally
+straightforward to extract an algorithm to compute such a <code>y</code> given
+<code>x</code>.
+</p>
+
+<p>
+In the nineteenth century, however, increases in the complexity of
+mathematical arguments pushed mathematicians to develop new styles of
+reasoning that suppress algorithmic information and invoke
+descriptions of mathematical objects that abstract away the details of
+how those objects are represented. The goal was to obtain a powerful
+"conceptual" understanding without getting bogged down in
+computational details, but this had the effect of admitting
+mathematical theorems that are simply <i>false</i> on a direct
+computational reading.
+</p>
+
+<p>
+There is still fairly uniform agreement today that computation is
+important to mathematics. But there are different views as to how best
+to address computational concerns. From a <i>constructive</i> point of
+view, it is a mistake to separate mathematics from its computational
+roots; every meaningful mathematical theorem should have a direct
+computational interpretation. From a <i>classical</i> point of view, it is
+more fruitful to maintain a separation of concerns: we can use one
+language and body of methods to write computer programs, while
+maintaining the freedom to use a nonconstructive theories and methods
+to reason about them. Lean is designed to support both of these
+approaches. Core parts of the library are developed constructively,
+but the system also provides support for carrying out classical
+mathematical reasoning.
+</p>
+
+<p>
+Computationally, the "purest" part of dependent type theory avoids the
+use of <code>Prop</code> entirely. Inductive types and Pi types can be viewed as
+data types, and terms of these types can be "evaluated" by applying
+reduction rules until no more rules can be applied. In principle, any
+closed term (that is, term with no free variables) of type <code>ℕ</code> should
+evaluate to a numeral, <code>succ (... (succ zero)...)</code>.
+</p>
+
+<p>
+Introducing a proof-irrelevant <code>Prop</code> and marking theorems irreducible
+represents a first step towards separation of concerns. The intention
+is that elements of a type <code>P : Prop</code> should play no role in
+computation, and so the particular construction of a term <code>t : P</code> is
+"irrelevant" in that sense. One can still define computational objects
+the incorporate elements of type <code>Prop</code>; the point is that these
+elements can help us reason about the effects of the computation, but
+can be ignored when we extract "code" from the term. Elements of type
+<code>Prop</code> are not entirely innocuous, however. They include equations <code>s
+= t : A</code> for any type <code>A</code>, and such equations can be used as casts, to
+type check terms. Below, we will see examples of how such casts can
+block computation in the system. However, computation is still
+possible under an evaluation scheme that erases propositional content,
+ignore intermediate typing constraints, and reduces terms until they
+reach a normal form. Current plans for Lean include the development of
+a fast evaluator along these lines.
+</p>
+
+<p>
+Having adopted a proof-irrelevant <code>Prop</code>, one might consider it
+legitimate to use, for example, the law of the
+excluded middle, governing propositions. Of course, this, too, can
+block computation, but it does not block fast evaluation as described
+above.  From a constructive point of view, the most objectionable
+classical axioms are "choice axioms" that allow us to extract "data"
+from any existential proposition, completely erasing the distinction
+between the proof-irrelevant and data-relevant parts of the
+theory. These are discussed in Section <a href="#" onclick="myModule.scrollTutorialTo('Choice_Axioms')">Choice Axioms</a> below.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org8025a53" class="outline-3">
+<h3 id="org8025a53"><span class="section-number-3"> 12.2</span> Propositional Extensionality</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+Propositional extensionality is the following axiom:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-1' mode="ace/mode/lean" readonly="true">axiom propext {a b : Prop} : (a ↔ b) → a = b</juicy-ace-editor><div id='lean-full-code-1' style='display:none'>namespace hide
+
+axiom propext {a b : Prop} : (a ↔ b) → a = b
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-1').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+It asserts that when two propositions imply one another, they are
+actually equal. This is consistent with set-theoretic
+interpretations in which any element <code>a : Prop</code> is either empty or the
+singleton set <code>{*}</code>, for some distinguished element <code>*</code>. The axiom has
+the the effect that equivalent propositions can be substituted for one
+another in any context:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-2' mode="ace/mode/lean" readonly="true">section
+  open eq.ops
+  variables a b c d e : Prop
+  variable P : Prop → Prop
+
+  example (H : a ↔ b) : (c ∧ a ∧ d → e) ↔ (c ∧ b ∧ d → e) :=
+  propext H ▸ !iff.refl
+
+  example (H : a ↔ b) (H1 : P a) : P b :=
+  propext H ▸ H1
+end</juicy-ace-editor><div id='lean-full-code-2' style='display:none'>namespace hide
+
+axiom propext {a b : Prop} : (a ↔ b) → a = b
+
+section
+  open eq.ops
+  variables a b c d e : Prop
+  variable P : Prop → Prop
+
+  example (H : a ↔ b) : (c ∧ a ∧ d → e) ↔ (c ∧ b ∧ d → e) :=
+  propext H ▸ !iff.refl
+
+  example (H : a ↔ b) (H1 : P a) : P b :=
+  propext H ▸ H1
+end
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-2').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The first example could be proved more laboriously without <code>propext</code>
+using the fact that the propositional connectives respect
+propositional equivalence. The second example represents a more
+essential use of <code>propext</code>. In fact, it is equivalent to <code>propext</code>
+itself, a fact which we encourage you to prove.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org0da6111" class="outline-3">
+<h3 id="org0da6111"><span class="section-number-3"> 12.3</span> Function Extensionality</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+Similar to propositional extensionality, function extensionality
+asserts that any two functions of type <code>Π x : A, B x</code> that agree on
+all their inputs are equal.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-3' mode="ace/mode/lean" readonly="true">check @funext
+-- ∀ {A : Type} {B : A → Type} {f₁ f₂ : Π x : A, B x}, (∀ x, f₁ x = f₂ x) → f₁ = f₂</juicy-ace-editor><div id='lean-full-code-3' style='display:none'>namespace hide
+
+check @funext
+-- ∀ {A : Type} {B : A → Type} {f₁ f₂ : Π x : A, B x}, (∀ x, f₁ x = f₂ x) → f₁ = f₂
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-3').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+From a classical, set-theoretic perspective,
+this is exactly what it means for two functions to be
+equal. This is known as an "extensional" view of functions. From a
+constructive perspective, however, it is sometimes more natural to
+think of functions as algorithms, or computer programs, that are
+presented in some explicit way. It is certainly the case that two
+computer programs can compute the same answer for every input despite
+the fact that they are syntactically quite different. In much the same
+way, you might want to maintain a view of functions that does not
+force you to identify two functions that have the same input / output
+behavior. This is known as an "intensional" view of
+functions.
+</p>
+
+<p>
+In fact, function extensionality follows from the existence of
+quotients, which we describe in the next section. In the Lean standard
+library, therefore, <code>funext</code> is thus <a target='_blank' href="https://github.com/leanprover/lean/blob/master/library/init/funext.lean">proved from the quotient
+construction</a>.
+</p>
+
+<p>
+Suppose that for <code>X : Type</code> we define the <code>set X := X → Prop</code> to
+denote the type of subsets of <code>X</code>, essentially identifying subsets
+with predicates. By combining <code>funext</code> and <code>propext</code>, we obtain an
+extensional theory of such sets:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-4' mode="ace/mode/lean" readonly="true">definition set (X : Type) := X → Prop
+
+namespace set
+
+variable {X : Type}
+
+definition mem [reducible] (x : X) (a : set X) := a x
+notation e ∈ a := mem e a
+
+theorem setext {a b : set X} (H : ∀ x, x ∈ a ↔ x ∈ b) : a = b :=
+funext (take x, propext (H x))
+
+end set</juicy-ace-editor><div id='lean-full-code-4' style='display:none'>import logic
+open eq.ops
+
+namespace hide
+
+definition set (X : Type) := X → Prop
+
+namespace set
+
+variable {X : Type}
+
+definition mem [reducible] (x : X) (a : set X) := a x
+notation e ∈ a := mem e a
+
+theorem setext {a b : set X} (H : ∀ x, x ∈ a ↔ x ∈ b) : a = b :=
+funext (take x, propext (H x))
+
+end set
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-4').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+We can then proceed to define the empty set and set intersection, for
+example, and prove set identities:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-5' mode="ace/mode/lean" readonly="true">definition empty [reducible] : set X := λ x, false
+notation `∅` := empty
+
+definition inter [reducible] (a b : set X) : set X := λ x, x ∈ a ∧ x ∈ b
+notation a ∩ b := inter a b
+
+theorem inter_self (a : set X) : a ∩ a = a :=
+setext (take x, !and_self)
+
+theorem inter_empty (a : set X) : a ∩ ∅ = ∅ :=
+setext (take x, !and_false)
+
+theorem empty_inter (a : set X) : ∅ ∩ a = ∅ :=
+setext (take x, !false_and)
+
+theorem inter.comm (a b : set X) : a ∩ b = b ∩ a :=
+setext (take x, !and.comm)</juicy-ace-editor><div id='lean-full-code-5' style='display:none'>import standard
+import logic
+open eq.ops
+
+namespace hide
+
+definition set (X : Type) := X → Prop
+
+namespace set
+
+variable {X : Type}
+
+definition mem [reducible] (x : X) (a : set X) := a x
+notation e ∈ a := mem e a
+
+theorem setext {a b : set X} (H : ∀ x, x ∈ a ↔ x ∈ b) : a = b :=
+funext (take x, propext (H x))
+
+definition empty [reducible] : set X := λ x, false
+notation `∅` := empty
+
+definition inter [reducible] (a b : set X) : set X := λ x, x ∈ a ∧ x ∈ b
+notation a ∩ b := inter a b
+
+theorem inter_self (a : set X) : a ∩ a = a :=
+setext (take x, !and_self)
+
+theorem inter_empty (a : set X) : a ∩ ∅ = ∅ :=
+setext (take x, !and_false)
+
+theorem empty_inter (a : set X) : ∅ ∩ a = ∅ :=
+setext (take x, !false_and)
+
+theorem inter.comm (a b : set X) : a ∩ b = b ∩ a :=
+setext (take x, !and.comm)
+
+end set
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-5').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The following is an example of how function extensionality blocks
+computation inside the Lean kernel.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-6' mode="ace/mode/lean" readonly="true">import data.nat
+open nat algebra
+
+definition f₁ (x : ℕ) := x
+definition f₂ (x : ℕ) := 0 + x
+
+theorem feq : f₁ = f₂ := funext (take x, eq.subst !zero_add rfl)
+check eq.rec (0 : ℕ) feq    -- ℕ
+eval eq.rec (0 : ℕ) feq     -- eq.rec 0 feq
+</juicy-ace-editor><div id='lean-full-code-6' style='display:none'>import data.nat
+open nat algebra
+
+definition f₁ (x : ℕ) := x
+definition f₂ (x : ℕ) := 0 + x
+
+theorem feq : f₁ = f₂ := funext (take x, eq.subst !zero_add rfl)
+check eq.rec (0 : ℕ) feq    -- ℕ
+eval eq.rec (0 : ℕ) feq     -- eq.rec 0 feq
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-6').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+First, we show that the two functions <code>f₁</code> and <code>f₂</code> are equal using
+function extensionality, and then we "cast" <code>0</code> of type <code>ℕ</code> by
+replacing <code>f₁</code> by <code>f₂</code> in the type. Of course, the cast is vacuous,
+because <code>ℕ</code> does not depend on <code>f₁</code>. But that is enough to do the
+damage: under the computational rules of the system, we now have a
+closed term of <code>ℕ</code> that does not reduce to a numeral. In this case, we
+may be tempted to "reduce" the expression to <code>0</code>. But in nontrivial
+examples, eliminating cast changes the type of the term, which might
+make an ambient expression type incorrect.
+</p>
+
+<p>
+In the next section, we will exhibit a similar example with the
+quotient construction.  Current research programs, including work on
+<i>observational type theory</i> and <i>cubical type theory</i>, aim to extend
+type theory in ways that permit reductions for casts involving
+function extensionality, quotients, and more. But the solutions are
+not so clear cut, and the rules of Lean's underlying calculus do not
+sanction such reductions.
+</p>
+
+<p>
+In a sense, however, a cast does not change the "meaning" of an
+expression. Rather, it is a mechanism to reason about the expression's
+type. Given an appropriate semantics, it then makes sense to reduce
+terms in ways that preserve their meaning, ignoring the intermediate
+bookkeeping needed to make the reductions type correct. In that case,
+adding new axioms in <code>Prop</code> does not matter; by proof irrelevance, an
+expression in <code>Prop</code> carries no information, and can be safely ignored
+by the reduction procedures.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgf0f29e0" class="outline-3">
+<h3 id="orgf0f29e0"><span class="section-number-3"> 12.4</span> Quotients</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+Let <code>A</code> be any type, and let <code>R</code> be an equivalence relation on <code>A</code>. It
+is mathematically common to form the "quotient" <code>A / R</code>, that is, the
+type of elements of <code>A</code> "modulo" <code>R</code>. Set theoretically, one can view
+<code>A / R</code> as the set of equivalence classes of <code>A</code> modulo <code>R</code>. If <code>f : A
+→ B</code> is any function that respects the equivalence relation in the
+sense that for every <code>x y : A</code>, <code>R x y</code> implies <code>f x = f y</code>, then <code>f</code>
+"lifts" to a function <code>f' : A / R → B</code> defined on each equivalence
+class <code>[x]</code> by <code>f' [x] = f x</code>. Lean's standard library extends the
+Calculus of Inductive Constructions with additional constants that
+perform exactly these constructions, and installs this last equation
+as a definitional reduction rule.
+</p>
+
+<p>
+First, it is useful to define the notion of a <i>setoid</i>, which is
+simply a type with an associated equivalence relation:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-7' mode="ace/mode/lean" readonly="true">structure setoid [class] (A : Type) :=
+(r : A → A → Prop) (iseqv : equivalence r)
+
+namespace setoid
+  infix `≈` := setoid.r
+
+  variable {A : Type}
+  variable [s : setoid A]
+  include s
+
+  theorem refl (a : A) : a ≈ a :=
+  and.elim_left (@setoid.iseqv A s) a
+
+  theorem symm {a b : A} : a ≈ b → b ≈ a :=
+  λ H, and.elim_left (and.elim_right (@setoid.iseqv A s)) a b H
+
+  theorem trans {a b c : A} : a ≈ b → b ≈ c → a ≈ c :=
+  λ H₁ H₂, and.elim_right (and.elim_right (@setoid.iseqv A s)) a b c H₁ H₂
+end setoid</juicy-ace-editor><div id='lean-full-code-7' style='display:none'>namespace hide
+
+structure setoid [class] (A : Type) :=
+(r : A → A → Prop) (iseqv : equivalence r)
+
+namespace setoid
+  infix `≈` := setoid.r
+
+  variable {A : Type}
+  variable [s : setoid A]
+  include s
+
+  theorem refl (a : A) : a ≈ a :=
+  and.elim_left (@setoid.iseqv A s) a
+
+  theorem symm {a b : A} : a ≈ b → b ≈ a :=
+  λ H, and.elim_left (and.elim_right (@setoid.iseqv A s)) a b H
+
+  theorem trans {a b c : A} : a ≈ b → b ≈ c → a ≈ c :=
+  λ H₁ H₂, and.elim_right (and.elim_right (@setoid.iseqv A s)) a b c H₁ H₂
+end setoid
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-7').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Given a type <code>A</code>, a relation <code>R</code> on <code>A</code>, and a proof <code>p</code> that <code>R</code> is
+an equivalence relation, we can define <code>setoid.mk p</code> as an instance of
+the setoid class. Lean's type class inference mechanism then allows us
+to use the generic notation <code>≈</code> for <code>R</code>, and to use the generic theorems
+<code>setoid.refl</code>, <code>setoid.symm</code>, <code>setoid.trans</code> to reason about <code>R</code>.
+</p>
+
+<p>
+The quotient package consists of the following constructors:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-8' mode="ace/mode/lean" readonly="true">open setoid
+constant quot.{l}   : Π {A : Type.{l}}, setoid A → Type.{l}
+
+namespace quot
+  constant mk        : Π {A : Type}   [s : setoid A], A → quot s
+  notation `⟦`:max a `⟧`:0 := mk a
+
+  constant sound     : Π {A : Type}   [s : setoid A] {a b : A}, a ≈ b → ⟦a⟧ = ⟦b⟧
+  constant lift      : Π {A B : Type} [s : setoid A] (f : A → B), (∀ a b, a ≈ b → f a = f b) → quot s → B
+  constant ind       : ∀ {A : Type}   [s : setoid A] {B : quot s → Prop}, (∀ a, B ⟦a⟧) → ∀ q, B q
+end quot</juicy-ace-editor><div id='lean-full-code-8' style='display:none'>namespace hide
+
+open setoid
+constant quot.{l}   : Π {A : Type.{l}}, setoid A → Type.{l}
+
+namespace quot
+  constant mk        : Π {A : Type}   [s : setoid A], A → quot s
+  notation `⟦`:max a `⟧`:0 := mk a
+
+  constant sound     : Π {A : Type}   [s : setoid A] {a b : A}, a ≈ b → ⟦a⟧ = ⟦b⟧
+  constant lift      : Π {A B : Type} [s : setoid A] (f : A → B), (∀ a b, a ≈ b → f a = f b) → quot s → B
+  constant ind       : ∀ {A : Type}   [s : setoid A] {B : quot s → Prop}, (∀ a, B ⟦a⟧) → ∀ q, B q
+end quot
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-8').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+For any type <code>A</code> with associated equivalence relation <code>R</code>, first we
+declare a setoid instance <code>s</code> to associate <code>R</code> as "the" equivalence
+relation on <code>A</code>. Once we do that, <code>quot s</code> denotes the quotient type
+<code>A / R</code>, and given <code>a : A</code>, <code>⟦a⟧</code> denotes the "equivalence class" of
+<code>a</code>. The meaning of constants <code>sound</code>, <code>lift</code>, and <code>ind</code> are
+given by their types. In particular, <code>lift</code> is the function which
+lifts a function <code>f : A → B</code> that respects the equivalence relation to
+the function <code>lift f : quot s → B</code> which lifts <code>f</code> to <code>A / R</code>. After
+declaring the constants associated with the quotient type, the library
+file then calls an internal function, <code>init_quotient</code>, which installs
+the reduction that simplifies <code>lift f ⟦a⟧</code> to <code>f a</code>.
+</p>
+
+<p>
+To illustrate the use of quotients, let us define the type of ordered
+pairs. In the standard library, <code>A × B</code> represents the Cartesian
+product of the types <code>A</code> and <code>B</code>. We can view it as the type of pairs
+<code>(a, b)</code> where <code>a : A</code> and <code>b : B</code>. We can use quotient types to
+define the type of unordered pairs of type <code>A</code>. We can use the
+notation <code>{a₁, a₂}</code> to represent the unordered pair containing <code>a₁</code>
+and <code>a₂</code>.  Moreover, we want to be able to prove the equality <code>{a₁,
+a₂} = {a₂, a₁}</code>.  We start this construction by defining a relation <code>p
+~ q</code> on <code>A × A</code>.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-9' mode="ace/mode/lean" readonly="true">import data.prod
+open prod prod.ops quot
+
+private definition eqv {A : Type} (p₁ p₂ : A × A) : Prop :=
+(p₁.1 = p₂.1 ∧ p₁.2 = p₂.2) ∨ (p₁.1 = p₂.2 ∧ p₁.2 = p₂.1)
+
+infix `~` := eqv
+</juicy-ace-editor><div id='lean-full-code-9' style='display:none'>import data.prod
+open prod prod.ops quot
+
+private definition eqv {A : Type} (p₁ p₂ : A × A) : Prop :=
+(p₁.1 = p₂.1 ∧ p₁.2 = p₂.2) ∨ (p₁.1 = p₂.2 ∧ p₁.2 = p₂.1)
+
+infix `~` := eqv
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-9').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+To make the proofs more compact, we open the namespaces <code>eq</code> and <code>or</code>.
+Thus, we can write <code>symm</code>, <code>trans</code>, <code>inl</code> and <code>inr</code> instead of
+<code>eq.symm</code>, <code>eq.trans</code>, <code>or.inl</code> and <code>or.inr</code> respectively.
+We also define the notation <code>⟨H₁, H₂⟩</code> for <code>(and.intro H₁ H₂)</code>.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-10' mode="ace/mode/lean" readonly="true">open eq or
+
+local notation `⟨` H₁ `,` H₂ `⟩` := and.intro H₁ H₂
+</juicy-ace-editor><div id='lean-full-code-10' style='display:none'>open eq or
+
+local notation `⟨` H₁ `,` H₂ `⟩` := and.intro H₁ H₂
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-10').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The next step is to prove that <code>eqv</code> is an equivalence relation, which
+is to say, it is reflexive, symmetric and transitive. We can prove
+these three facts in a convenient and readable way by using dependent
+pattern matching to perform case-analysis and break the hypotheses
+into pieces that are then reassembled to produce the conclusion.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-11' mode="ace/mode/lean" readonly="true">private theorem eqv.refl {A : Type} : ∀ p : A × A, p ~ p :=
+take p, inl ⟨rfl, rfl⟩
+
+private theorem eqv.symm {A : Type} : ∀ p₁ p₂ : A × A, p₁ ~ p₂ → p₂ ~ p₁
+| (a₁, a₂) (b₁, b₂) (inl ⟨a₁b₁, a₂b₂⟩) := inl ⟨symm a₁b₁, symm a₂b₂⟩
+| (a₁, a₂) (b₁, b₂) (inr ⟨a₁b₂, a₂b₁⟩) := inr ⟨symm a₂b₁, symm a₁b₂⟩
+
+private theorem eqv.trans {A : Type} : ∀ p₁ p₂ p₃ : A × A, p₁ ~ p₂ → p₂ ~ p₃ → p₁ ~ p₃
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inl ⟨trans a₁b₁ b₁c₁, trans a₂b₂ b₂c₂⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inr ⟨trans a₁b₁ b₁c₂, trans a₂b₂ b₂c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inr ⟨trans a₁b₂ b₂c₂, trans a₂b₁ b₁c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inl ⟨trans a₁b₂ b₂c₁, trans a₂b₁ b₁c₂⟩
+
+private theorem is_equivalence (A : Type) : equivalence (@eqv A) :=
+mk_equivalence (@eqv A) (@eqv.refl A) (@eqv.symm A) (@eqv.trans A)</juicy-ace-editor><div id='lean-full-code-11' style='display:none'>import data.prod
+open prod prod.ops
+
+private definition eqv {A : Type} (p₁ p₂ : A × A) : Prop :=
+(p₁.1 = p₂.1 ∧ p₁.2 = p₂.2) ∨ (p₁.1 = p₂.2 ∧ p₁.2 = p₂.1)
+
+infix `~` := eqv
+
+open eq or
+
+local notation `⟨` H₁ `,` H₂ `⟩` := and.intro H₁ H₂
+
+private theorem eqv.refl {A : Type} : ∀ p : A × A, p ~ p :=
+take p, inl ⟨rfl, rfl⟩
+
+private theorem eqv.symm {A : Type} : ∀ p₁ p₂ : A × A, p₁ ~ p₂ → p₂ ~ p₁
+| (a₁, a₂) (b₁, b₂) (inl ⟨a₁b₁, a₂b₂⟩) := inl ⟨symm a₁b₁, symm a₂b₂⟩
+| (a₁, a₂) (b₁, b₂) (inr ⟨a₁b₂, a₂b₁⟩) := inr ⟨symm a₂b₁, symm a₁b₂⟩
+
+private theorem eqv.trans {A : Type} : ∀ p₁ p₂ p₃ : A × A, p₁ ~ p₂ → p₂ ~ p₃ → p₁ ~ p₃
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inl ⟨trans a₁b₁ b₁c₁, trans a₂b₂ b₂c₂⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inr ⟨trans a₁b₁ b₁c₂, trans a₂b₂ b₂c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inr ⟨trans a₁b₂ b₂c₂, trans a₂b₁ b₁c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inl ⟨trans a₁b₂ b₂c₁, trans a₂b₁ b₁c₂⟩
+
+private theorem is_equivalence (A : Type) : equivalence (@eqv A) :=
+mk_equivalence (@eqv A) (@eqv.refl A) (@eqv.symm A) (@eqv.trans A)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-11').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Now that we have proved that <code>eqv</code> is an equivalence relation, we can
+construct a <code>setoid (A × A)</code>, and use it to define the type <code>uprod A</code>
+of unordered pairs. Moreover, we define the unordered pair <code>{a₁, a₂}</code>
+as <code>⟦(a₁, a₂)⟧</code>.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-12' mode="ace/mode/lean" readonly="true">definition uprod.setoid [instance] (A : Type) : setoid (A × A) :=
+setoid.mk (@eqv A) (is_equivalence A)
+
+definition uprod (A : Type) : Type :=
+quot (uprod.setoid A)
+
+namespace uprod
+  definition mk {A : Type} (a₁ a₂ : A) : uprod A :=
+  ⟦(a₁, a₂)⟧
+
+  notation `{` a₁ `,` a₂ `}` := mk a₁ a₂
+end uprod</juicy-ace-editor><div id='lean-full-code-12' style='display:none'>import data.prod
+open prod prod.ops quot
+
+private definition eqv {A : Type} (p₁ p₂ : A × A) : Prop :=
+(p₁.1 = p₂.1 ∧ p₁.2 = p₂.2) ∨ (p₁.1 = p₂.2 ∧ p₁.2 = p₂.1)
+
+infix `~` := eqv
+
+open eq or
+
+local notation `⟨` H₁ `,` H₂ `⟩` := and.intro H₁ H₂
+
+private theorem eqv.refl {A : Type} : ∀ p : A × A, p ~ p :=
+take p, inl ⟨rfl, rfl⟩
+
+private theorem eqv.symm {A : Type} : ∀ p₁ p₂ : A × A, p₁ ~ p₂ → p₂ ~ p₁
+| (a₁, a₂) (b₁, b₂) (inl ⟨a₁b₁, a₂b₂⟩) := inl ⟨symm a₁b₁, symm a₂b₂⟩
+| (a₁, a₂) (b₁, b₂) (inr ⟨a₁b₂, a₂b₁⟩) := inr ⟨symm a₂b₁, symm a₁b₂⟩
+
+private theorem eqv.trans {A : Type} : ∀ p₁ p₂ p₃ : A × A, p₁ ~ p₂ → p₂ ~ p₃ → p₁ ~ p₃
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inl ⟨trans a₁b₁ b₁c₁, trans a₂b₂ b₂c₂⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inr ⟨trans a₁b₁ b₁c₂, trans a₂b₂ b₂c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inr ⟨trans a₁b₂ b₂c₂, trans a₂b₁ b₁c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inl ⟨trans a₁b₂ b₂c₁, trans a₂b₁ b₁c₂⟩
+
+private theorem is_equivalence (A : Type) : equivalence (@eqv A) :=
+mk_equivalence (@eqv A) (@eqv.refl A) (@eqv.symm A) (@eqv.trans A)
+
+definition uprod.setoid [instance] (A : Type) : setoid (A × A) :=
+setoid.mk (@eqv A) (is_equivalence A)
+
+definition uprod (A : Type) : Type :=
+quot (uprod.setoid A)
+
+namespace uprod
+  definition mk {A : Type} (a₁ a₂ : A) : uprod A :=
+  ⟦(a₁, a₂)⟧
+
+  notation `{` a₁ `,` a₂ `}` := mk a₁ a₂
+end uprod
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-12').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Now, we can easily prove that <code>{a₁, a₂} = {a₂, a₁}</code> using the <code>quot.sound</code>
+since <code>(a₁, a₂) ~ (a₂, a₁)</code>.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-13' mode="ace/mode/lean" readonly="true">  theorem mk_eq_mk {A : Type} (a₁ a₂ : A) : {a₁, a₂} = {a₂, a₁} :=
+  quot.sound (inr ⟨rfl, rfl⟩)</juicy-ace-editor><div id='lean-full-code-13' style='display:none'>import data.prod
+open prod prod.ops quot
+
+private definition eqv {A : Type} (p₁ p₂ : A × A) : Prop :=
+(p₁.1 = p₂.1 ∧ p₁.2 = p₂.2) ∨ (p₁.1 = p₂.2 ∧ p₁.2 = p₂.1)
+
+infix `~` := eqv
+
+open eq or
+
+local notation `⟨` H₁ `,` H₂ `⟩` := and.intro H₁ H₂
+
+private theorem eqv.refl {A : Type} : ∀ p : A × A, p ~ p :=
+take p, inl ⟨rfl, rfl⟩
+
+private theorem eqv.symm {A : Type} : ∀ p₁ p₂ : A × A, p₁ ~ p₂ → p₂ ~ p₁
+| (a₁, a₂) (b₁, b₂) (inl ⟨a₁b₁, a₂b₂⟩) := inl ⟨symm a₁b₁, symm a₂b₂⟩
+| (a₁, a₂) (b₁, b₂) (inr ⟨a₁b₂, a₂b₁⟩) := inr ⟨symm a₂b₁, symm a₁b₂⟩
+
+private theorem eqv.trans {A : Type} : ∀ p₁ p₂ p₃ : A × A, p₁ ~ p₂ → p₂ ~ p₃ → p₁ ~ p₃
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inl ⟨trans a₁b₁ b₁c₁, trans a₂b₂ b₂c₂⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inr ⟨trans a₁b₁ b₁c₂, trans a₂b₂ b₂c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inr ⟨trans a₁b₂ b₂c₂, trans a₂b₁ b₁c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inl ⟨trans a₁b₂ b₂c₁, trans a₂b₁ b₁c₂⟩
+
+private theorem is_equivalence (A : Type) : equivalence (@eqv A) :=
+mk_equivalence (@eqv A) (@eqv.refl A) (@eqv.symm A) (@eqv.trans A)
+
+definition uprod.setoid [instance] (A : Type) : setoid (A × A) :=
+setoid.mk (@eqv A) (is_equivalence A)
+
+definition uprod (A : Type) : Type :=
+quot (uprod.setoid A)
+
+namespace uprod
+  definition mk {A : Type} (a₁ a₂ : A) : uprod A :=
+  ⟦(a₁, a₂)⟧
+
+  notation `{` a₁ `,` a₂ `}` := mk a₁ a₂
+
+  theorem mk_eq_mk {A : Type} (a₁ a₂ : A) : {a₁, a₂} = {a₂, a₁} :=
+  quot.sound (inr ⟨rfl, rfl⟩)
+end uprod
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-13').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+To complete the example, given <code>a : A</code> and <code>u : uprod A</code>, we define
+the proposition <code>a ∈ u</code> which should hold if <code>a</code> is one of the
+elements of the unordered pair <code>u</code>.  First, we define a similar
+proposition <code>mem_fn a u</code> on (ordered) pairs; then, we show that
+<code>mem_fn</code> respects the equivalence relation <code>eqv</code>, in the lemma
+<code>mem_respects</code>.  This is an idiom that is used extensively in the Lean
+standard library.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-14' mode="ace/mode/lean" readonly="true">  private definition mem_fn {A : Type} (a : A) : A × A → Prop
+  | (a₁, a₂) := a = a₁ ∨ a = a₂
+
+  -- auxiliary lemma for proving mem_respects
+  private lemma mem_swap {A : Type} {a : A} : ∀ {p : A × A}, mem_fn a p = mem_fn a (swap p)
+  | (a₁, a₂) := propext (iff.intro
+      (λ l : a = a₁ ∨ a = a₂, or.elim l (λ h₁, inr h₁) (λ h₂, inl h₂))
+      (λ r : a = a₂ ∨ a = a₁, or.elim r (λ h₁, inr h₁) (λ h₂, inl h₂)))
+
+  private lemma mem_respects {A : Type} : ∀ {p₁ p₂ : A × A} (a : A),  p₁ ~ p₂ → mem_fn a p₁ = mem_fn a p₂
+  | (a₁, a₂) (b₁, b₂) a (inl ⟨a₁b₁, a₂b₂⟩) :=
+    begin esimp at a₁b₁, esimp at a₂b₂, rewrite [a₁b₁, a₂b₂] end
+  | (a₁, a₂) (b₁, b₂) a (inr ⟨a₁b₂, a₂b₁⟩) :=
+    begin esimp at a₁b₂, esimp at a₂b₁, rewrite [a₁b₂, a₂b₁], apply mem_swap end
+
+  definition mem {A : Type} (a : A) (u : uprod A) : Prop :=
+  quot.lift_on u (λ p, mem_fn a p) (λ p₁ p₂ e, mem_respects a e)
+
+  infix `∈` := mem
+
+  theorem mem_mk_left {A : Type} (a b : A) : a ∈ {a, b} :=
+  inl rfl
+
+  theorem mem_mk_right {A : Type} (a b : A) : b ∈ {a, b} :=
+  inr rfl
+
+  theorem mem_or_mem_of_mem_mk {A : Type} {a b c : A} : c ∈ {a, b} → c = a ∨ c = b :=
+  λ h, h</juicy-ace-editor><div id='lean-full-code-14' style='display:none'>import data.prod
+open prod prod.ops quot
+
+private definition eqv {A : Type} (p₁ p₂ : A × A) : Prop :=
+(p₁.1 = p₂.1 ∧ p₁.2 = p₂.2) ∨ (p₁.1 = p₂.2 ∧ p₁.2 = p₂.1)
+
+infix `~` := eqv
+
+open eq or
+
+local notation `⟨` H₁ `,` H₂ `⟩` := and.intro H₁ H₂
+
+private theorem eqv.refl {A : Type} : ∀ p : A × A, p ~ p :=
+take p, inl ⟨rfl, rfl⟩
+
+private theorem eqv.symm {A : Type} : ∀ p₁ p₂ : A × A, p₁ ~ p₂ → p₂ ~ p₁
+| (a₁, a₂) (b₁, b₂) (inl ⟨a₁b₁, a₂b₂⟩) := inl ⟨symm a₁b₁, symm a₂b₂⟩
+| (a₁, a₂) (b₁, b₂) (inr ⟨a₁b₂, a₂b₁⟩) := inr ⟨symm a₂b₁, symm a₁b₂⟩
+
+private theorem eqv.trans {A : Type} : ∀ p₁ p₂ p₃ : A × A, p₁ ~ p₂ → p₂ ~ p₃ → p₁ ~ p₃
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inl ⟨trans a₁b₁ b₁c₁, trans a₂b₂ b₂c₂⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inl ⟨a₁b₁, a₂b₂⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inr ⟨trans a₁b₁ b₁c₂, trans a₂b₂ b₂c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inl ⟨b₁c₁, b₂c₂⟩) :=
+  inr ⟨trans a₁b₂ b₂c₂, trans a₂b₁ b₁c₁⟩
+| (a₁, a₂) (b₁, b₂) (c₁, c₂) (inr ⟨a₁b₂, a₂b₁⟩) (inr ⟨b₁c₂, b₂c₁⟩) :=
+  inl ⟨trans a₁b₂ b₂c₁, trans a₂b₁ b₁c₂⟩
+
+private theorem is_equivalence (A : Type) : equivalence (@eqv A) :=
+mk_equivalence (@eqv A) (@eqv.refl A) (@eqv.symm A) (@eqv.trans A)
+
+definition uprod.setoid [instance] (A : Type) : setoid (A × A) :=
+setoid.mk (@eqv A) (is_equivalence A)
+
+definition uprod (A : Type) : Type :=
+quot (uprod.setoid A)
+
+namespace uprod
+  definition mk {A : Type} (a₁ a₂ : A) : uprod A :=
+  ⟦(a₁, a₂)⟧
+
+  notation `{` a₁ `,` a₂ `}` := mk a₁ a₂
+
+  theorem mk_eq_mk {A : Type} (a₁ a₂ : A) : {a₁, a₂} = {a₂, a₁} :=
+  quot.sound (inr ⟨rfl, rfl⟩)
+
+  private definition mem_fn {A : Type} (a : A) : A × A → Prop
+  | (a₁, a₂) := a = a₁ ∨ a = a₂
+
+  -- auxiliary lemma for proving mem_respects
+  private lemma mem_swap {A : Type} {a : A} : ∀ {p : A × A}, mem_fn a p = mem_fn a (swap p)
+  | (a₁, a₂) := propext (iff.intro
+      (λ l : a = a₁ ∨ a = a₂, or.elim l (λ h₁, inr h₁) (λ h₂, inl h₂))
+      (λ r : a = a₂ ∨ a = a₁, or.elim r (λ h₁, inr h₁) (λ h₂, inl h₂)))
+
+  private lemma mem_respects {A : Type} : ∀ {p₁ p₂ : A × A} (a : A),  p₁ ~ p₂ → mem_fn a p₁ = mem_fn a p₂
+  | (a₁, a₂) (b₁, b₂) a (inl ⟨a₁b₁, a₂b₂⟩) :=
+    begin esimp at a₁b₁, esimp at a₂b₂, rewrite [a₁b₁, a₂b₂] end
+  | (a₁, a₂) (b₁, b₂) a (inr ⟨a₁b₂, a₂b₁⟩) :=
+    begin esimp at a₁b₂, esimp at a₂b₁, rewrite [a₁b₂, a₂b₁], apply mem_swap end
+
+  definition mem {A : Type} (a : A) (u : uprod A) : Prop :=
+  quot.lift_on u (λ p, mem_fn a p) (λ p₁ p₂ e, mem_respects a e)
+
+  infix `∈` := mem
+
+  theorem mem_mk_left {A : Type} (a b : A) : a ∈ {a, b} :=
+  inl rfl
+
+  theorem mem_mk_right {A : Type} (a b : A) : b ∈ {a, b} :=
+  inr rfl
+
+  theorem mem_or_mem_of_mem_mk {A : Type} {a b c : A} : c ∈ {a, b} → c = a ∨ c = b :=
+  λ h, h
+end uprod
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-14').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The quotient construction can be used to derive function
+extensionality, and we have seen that the latter blocks
+computation. The following provides another example of the same
+phenomenon, similar to the one we discussed in the last section.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-15' mode="ace/mode/lean" readonly="true">import data.finset
+open finset quot list nat
+
+definition s₁ : finset nat := to_finset [1, 2]
+definition s₂ : finset nat := to_finset [2, 1]
+
+theorem seq : s₁ = s₂ := dec_trivial
+check eq.rec (0 : ℕ) seq
+eval eq.rec (0 : ℕ) seq
+</juicy-ace-editor><div id='lean-full-code-15' style='display:none'>import data.finset
+open finset quot list nat
+
+definition s₁ : finset nat := to_finset [1, 2]
+definition s₂ : finset nat := to_finset [2, 1]
+
+theorem seq : s₁ = s₂ := dec_trivial
+check eq.rec (0 : ℕ) seq
+eval eq.rec (0 : ℕ) seq
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-15').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org93a60be" class="outline-3">
+<h3 id="Choice_Axioms"><a id="org93a60be"></a><span class="section-number-3"> 12.5</span> Choice Axioms</h3>
+<div class="outline-text-3" id="text-Choice_Axioms">
+<p>
+The following axiom is used to support classical reasoning in Lean:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-16' mode="ace/mode/lean" readonly="true">axiom strong_indefinite_description {A : Type} (P : A → Prop) (H : nonempty A) :
+  { x | (∃ y : A, P y) → P x}</juicy-ace-editor><div id='lean-full-code-16' style='display:none'>open subtype nonempty
+
+namespace hide
+axiom strong_indefinite_description {A : Type} (P : A → Prop) (H : nonempty A) :
+  { x | (∃ y : A, P y) → P x}
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-16').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+This asserts that given any predicate <code>P</code> on a nonempty type <code>A</code>, we
+can (magically) produce an element <code>x</code> with the property that if any
+element of <code>A</code> satisfies <code>P</code>, then <code>x</code> does. In the presence of
+classical logic, we could prove this from the slightly weaker axiom:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-17' mode="ace/mode/lean" readonly="true">axiom indefinite_description {A : Type} {P : A → Prop} (H : ∃ x, P x) :
+  {x : A | P x}</juicy-ace-editor><div id='lean-full-code-17' style='display:none'>open subtype nonempty
+
+namespace hide
+axiom indefinite_description {A : Type} {P : A → Prop} (H : ∃ x, P x) :
+  {x : A | P x}
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-17').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+This says that knowing that there is an element of <code>A</code> satisfying <code>P</code>
+is enough to produce one. This axiom essentially undoes the separation
+of data from propositions, because it allows us to extract a piece of
+data &#x2014; an element of <code>A</code> satisfying <code>P</code> &#x2014; from the proposition
+that such an element exists.
+</p>
+
+<p>
+The axiom <code>strong_indefinite_description</code> is imported when you import
+<code>logic.choice</code>. Separating the <code>x</code> asserted to exist by the
+axiom from the property it satisfies allows us to define the Hilbert
+epsilon function:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-18' mode="ace/mode/lean" readonly="true">noncomputable definition epsilon {A : Type} [H : nonempty A] (P : A → Prop) : A :=
+let u : {x | (∃ y, P y) → P x} :=
+  strong_indefinite_description P H in
+elt_of u
+
+theorem epsilon_spec_aux {A : Type} (H : nonempty A) (P : A → Prop) (Hex : ∃ y, P y) :
+    P (@epsilon A H P) :=
+let u : {x | (∃ y, P y) → P x} :=
+  strong_indefinite_description P H in
+has_property u Hex
+
+theorem epsilon_spec {A : Type} {P : A → Prop} (Hex : ∃ y, P y) :
+    P (@epsilon A (nonempty_of_exists Hex) P) :=
+epsilon_spec_aux (nonempty_of_exists Hex) P Hex</juicy-ace-editor><div id='lean-full-code-18' style='display:none'>import logic.quantifiers
+open subtype nonempty
+
+namespace hide
+
+axiom strong_indefinite_description {A : Type} (P : A → Prop) (H : nonempty A) :
+  { x | (∃ y : A, P y) → P x}
+
+noncomputable definition epsilon {A : Type} [H : nonempty A] (P : A → Prop) : A :=
+let u : {x | (∃ y, P y) → P x} :=
+  strong_indefinite_description P H in
+elt_of u
+
+theorem epsilon_spec_aux {A : Type} (H : nonempty A) (P : A → Prop) (Hex : ∃ y, P y) :
+    P (@epsilon A H P) :=
+let u : {x | (∃ y, P y) → P x} :=
+  strong_indefinite_description P H in
+has_property u Hex
+
+theorem epsilon_spec {A : Type} {P : A → Prop} (Hex : ∃ y, P y) :
+    P (@epsilon A (nonempty_of_exists Hex) P) :=
+epsilon_spec_aux (nonempty_of_exists Hex) P Hex
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-18').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Assuming the type <code>A</code> is nonempty, <code>epsilon P</code> returns an element of
+<code>A</code>, with the property that if any element of <code>A</code> satisfies <code>P</code>,
+<code>epsilon P</code> does. Notice that the definition is preceded by the
+keyword <code>noncomputable</code>, to signal the fact that expressions depending
+on this definition will not compute to canonical normal forms, even
+under the more liberal evaluation scheme described above.
+</p>
+
+<p>
+Just as <code>indefinite_description</code> is a weaker version of
+<code>strong_indefinite_description</code>, the <code>some</code> operator is a weaker
+version of the <code>epsilon</code> operator. It is sometimes easier to
+use. Assuming <code>H : ∃ x, P x</code> is a proof that some element of <code>A</code>
+satisfies <code>P</code>, <code>some H</code> denotes such an element.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-19' mode="ace/mode/lean" readonly="true">noncomputable definition some {A : Type} {P : A → Prop} (H : ∃ x, P x) : A :=
+@epsilon A (nonempty_of_exists H) P
+
+theorem some_spec {A : Type} {P : A → Prop} (H : ∃ x, P x) : P (some H) :=
+epsilon_spec H</juicy-ace-editor><div id='lean-full-code-19' style='display:none'>import logic.quantifiers
+open subtype nonempty
+
+namespace hide
+
+axiom strong_indefinite_description {A : Type} (P : A → Prop) (H : nonempty A) :
+  { x | (∃ y : A, P y) → P x}
+
+noncomputable definition epsilon {A : Type} [H : nonempty A] (P : A → Prop) : A :=
+let u : {x | (∃ y, P y) → P x} :=
+  strong_indefinite_description P H in
+elt_of u
+
+theorem epsilon_spec_aux {A : Type} (H : nonempty A) (P : A → Prop) (Hex : ∃ y, P y) :
+    P (@epsilon A H P) :=
+let u : {x | (∃ y, P y) → P x} :=
+  strong_indefinite_description P H in
+has_property u Hex
+
+theorem epsilon_spec {A : Type} {P : A → Prop} (Hex : ∃ y, P y) :
+    P (@epsilon A (nonempty_of_exists Hex) P) :=
+epsilon_spec_aux (nonempty_of_exists Hex) P Hex
+
+noncomputable definition some {A : Type} {P : A → Prop} (H : ∃ x, P x) : A :=
+@epsilon A (nonempty_of_exists H) P
+
+theorem some_spec {A : Type} {P : A → Prop} (H : ∃ x, P x) : P (some H) :=
+epsilon_spec H
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-19').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgc525650" class="outline-3">
+<h3 id="orgc525650"><span class="section-number-3"> 12.6</span> Excluded Middle</h3>
+<div class="outline-text-3" id="text-1-6">
+<p>
+The law of the excluded middle is the following
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-20' mode="ace/mode/lean" readonly="true">check @em
+-- ∀ (a : Prop), a ∨ ¬a</juicy-ace-editor><div id='lean-full-code-20' style='display:none'>open classical
+namespace hide
+check @em
+-- ∀ (a : Prop), a ∨ ¬a
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-20').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+We can prove it using the choice axiom described in the previous section.
+This is a consequence of <a target='_blank' href="http://en.wikipedia.org/wiki/Diaconescu's_theorem">Diaconescu's theorem</a>
+which states that the axiom of choice is sufficient to
+derive the law of excluded middle. More precisely, it shows that the
+law of the excluded middle follows from <code>strong_indefinite_description</code>
+(Hilbert's choice), <code>propext</code> (propositional extensionality) and
+<code>funext</code> (function extensionality).
+The standard library contains
+<a target='_blank' href="https://github.com/leanprover/lean/blob/master/library/logic/choice.lean">this proof</a>, which we reproduce here.
+</p>
+
+<p>
+First, we import the necessary axioms, fix a parameter, <code>p</code>, and
+define two predicates <code>U</code> and <code>V</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-21' mode="ace/mode/lean" readonly="true">import logic.eq
+open classical eq.ops
+
+section
+parameter  p : Prop
+
+definition U (x : Prop) : Prop := x = true ∨ p
+definition V (x : Prop) : Prop := x = false ∨ p</juicy-ace-editor><div id='lean-full-code-21' style='display:none'>import logic.eq
+open classical eq.ops
+
+section
+parameter  p : Prop
+
+definition U (x : Prop) : Prop := x = true ∨ p
+definition V (x : Prop) : Prop := x = false ∨ p
+
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-21').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+If <code>p</code> is true, then every element of <code>Prop</code> is in both <code>U</code> and
+<code>V</code>. If <code>p</code> is false, then <code>U</code> is the singleton <code>true</code>, and <code>V</code> is the
+singleton <code>false</code>.
+</p>
+
+<p>
+Next, we use <code>epsilon</code> to choose an element from each of <code>U</code> and <code>V</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-22' mode="ace/mode/lean" readonly="true">noncomputable definition u := epsilon U
+noncomputable definition v := epsilon V
+
+lemma u_def : U u :=
+epsilon_spec (exists.intro true (or.inl rfl))
+
+lemma v_def : V v :=
+epsilon_spec (exists.intro false (or.inl rfl))</juicy-ace-editor><div id='lean-full-code-22' style='display:none'>import logic.eq
+open classical eq.ops
+
+section
+parameter  p : Prop
+
+definition U (x : Prop) : Prop := x = true ∨ p
+definition V (x : Prop) : Prop := x = false ∨ p
+
+noncomputable definition u := epsilon U
+noncomputable definition v := epsilon V
+
+lemma u_def : U u :=
+epsilon_spec (exists.intro true (or.inl rfl))
+
+lemma v_def : V v :=
+epsilon_spec (exists.intro false (or.inl rfl))
+
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-22').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Each of <code>U</code> and <code>V</code> is a disjunction, so <code>u_def</code> and <code>v_def</code> represent
+four cases. In one of these cases, <code>u = true</code> and <code>v = false</code>, and in
+all the other cases, <code>p</code> is true. Thus we have:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-23' mode="ace/mode/lean" readonly="true">lemma not_uv_or_p : ¬(u = v) ∨ p :=
+or.elim u_def
+  (assume Hut : u = true,
+    or.elim v_def
+      (assume Hvf : v = false,
+        have Hne : ¬(u = v), from Hvf⁻¹ ▸ Hut⁻¹ ▸ true_ne_false,
+        or.inl Hne)
+      (assume Hp : p, or.inr Hp))
+  (assume Hp : p, or.inr Hp)</juicy-ace-editor><div id='lean-full-code-23' style='display:none'>import logic.eq
+open classical eq.ops
+
+section
+parameter  p : Prop
+
+definition U (x : Prop) : Prop := x = true ∨ p
+definition V (x : Prop) : Prop := x = false ∨ p
+
+noncomputable definition u := epsilon U
+noncomputable definition v := epsilon V
+
+lemma u_def : U u :=
+epsilon_spec (exists.intro true (or.inl rfl))
+
+lemma v_def : V v :=
+epsilon_spec (exists.intro false (or.inl rfl))
+
+lemma not_uv_or_p : ¬(u = v) ∨ p :=
+or.elim u_def
+  (assume Hut : u = true,
+    or.elim v_def
+      (assume Hvf : v = false,
+        have Hne : ¬(u = v), from Hvf⁻¹ ▸ Hut⁻¹ ▸ true_ne_false,
+        or.inl Hne)
+      (assume Hp : p, or.inr Hp))
+  (assume Hp : p, or.inr Hp)
+
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-23').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+On the other hand, if <code>p</code> is true, then, by function extensionality
+and propositional extensionality, <code>U</code> and <code>V</code> are equal. By the
+definition of <code>u</code> and <code>v</code>, this implies that they are equal as well.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-24' mode="ace/mode/lean" readonly="true">lemma p_implies_uv : p → u = v :=
+assume Hp : p,
+have Hpred : U = V, from
+  funext (take x : Prop,
+    have Hl : (x = true ∨ p) → (x = false ∨ p), from
+      assume A, or.inr Hp,
+    have Hr : (x = false ∨ p) → (x = true ∨ p), from
+      assume A, or.inr Hp,
+    show (x = true ∨ p) = (x = false ∨ p), from
+      propext (iff.intro Hl Hr)),
+have H' : epsilon U = epsilon V, from Hpred ▸ rfl,
+show u = v, from H'</juicy-ace-editor><div id='lean-full-code-24' style='display:none'>import logic.eq
+open classical eq.ops
+
+section
+parameter  p : Prop
+
+definition U (x : Prop) : Prop := x = true ∨ p
+definition V (x : Prop) : Prop := x = false ∨ p
+
+noncomputable definition u := epsilon U
+noncomputable definition v := epsilon V
+
+lemma u_def : U u :=
+epsilon_spec (exists.intro true (or.inl rfl))
+
+lemma v_def : V v :=
+epsilon_spec (exists.intro false (or.inl rfl))
+
+lemma not_uv_or_p : ¬(u = v) ∨ p :=
+or.elim u_def
+  (assume Hut : u = true,
+    or.elim v_def
+      (assume Hvf : v = false,
+        have Hne : ¬(u = v), from Hvf⁻¹ ▸ Hut⁻¹ ▸ true_ne_false,
+        or.inl Hne)
+      (assume Hp : p, or.inr Hp))
+  (assume Hp : p, or.inr Hp)
+
+lemma p_implies_uv : p → u = v :=
+assume Hp : p,
+have Hpred : U = V, from
+  funext (take x : Prop,
+    have Hl : (x = true ∨ p) → (x = false ∨ p), from
+      assume A, or.inr Hp,
+    have Hr : (x = false ∨ p) → (x = true ∨ p), from
+      assume A, or.inr Hp,
+    show (x = true ∨ p) = (x = false ∨ p), from
+      propext (iff.intro Hl Hr)),
+have H' : epsilon U = epsilon V, from Hpred ▸ rfl,
+show u = v, from H'
+
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-24').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Putting these last two facts together yields the desired conclusion:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-25' mode="ace/mode/lean" readonly="true">theorem EM : p ∨ ¬p :=
+have H : ¬(u = v) → ¬p, from mt p_implies_uv,
+or.elim not_uv_or_p
+  (assume Hne : ¬(u = v), or.inr (H Hne))
+  (assume Hp : p, or.inl Hp)</juicy-ace-editor><div id='lean-full-code-25' style='display:none'>import logic.eq
+open classical eq.ops
+
+section
+parameter  p : Prop
+
+definition U (x : Prop) : Prop := x = true ∨ p
+definition V (x : Prop) : Prop := x = false ∨ p
+
+noncomputable definition u := epsilon U
+noncomputable definition v := epsilon V
+
+lemma u_def : U u :=
+epsilon_spec (exists.intro true (or.inl rfl))
+
+lemma v_def : V v :=
+epsilon_spec (exists.intro false (or.inl rfl))
+
+lemma not_uv_or_p : ¬(u = v) ∨ p :=
+or.elim u_def
+  (assume Hut : u = true,
+    or.elim v_def
+      (assume Hvf : v = false,
+        have Hne : ¬(u = v), from Hvf⁻¹ ▸ Hut⁻¹ ▸ true_ne_false,
+        or.inl Hne)
+      (assume Hp : p, or.inr Hp))
+  (assume Hp : p, or.inr Hp)
+
+lemma p_implies_uv : p → u = v :=
+assume Hp : p,
+have Hpred : U = V, from
+  funext (take x : Prop,
+    have Hl : (x = true ∨ p) → (x = false ∨ p), from
+      assume A, or.inr Hp,
+    have Hr : (x = false ∨ p) → (x = true ∨ p), from
+      assume A, or.inr Hp,
+    show (x = true ∨ p) = (x = false ∨ p), from
+      propext (iff.intro Hl Hr)),
+have H' : epsilon U = epsilon V, from Hpred ▸ rfl,
+show u = v, from H'
+
+theorem EM : p ∨ ¬p :=
+have H : ¬(u = v) → ¬p, from mt p_implies_uv,
+or.elim not_uv_or_p
+  (assume Hne : ¬(u = v), or.inr (H Hne))
+  (assume Hp : p, or.inl Hp)
+
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-25').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Consequences of excluded middle include
+double-negation elimination, proof by cases, and proof by
+contradiction, all of which are described in Section <a href="#" onclick="myModule.loadTutorial('03_Propositions_and_Proofs.html', 'Classical_Logic')">Classical Logic</a>.
+</p>
+
+<p>
+The law of the excluded middle and propositional extensionality imply
+propositional completeness:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-26' mode="ace/mode/lean" readonly="true">theorem prop_complete (a : Prop) : a = true ∨ a = false :=
+or.elim (em a)
+  (λ t, or.inl (propext (iff.intro (λ h, trivial) (λ h, t))))
+  (λ f, or.inr (propext (iff.intro (λ h, absurd h f) (λ h, false.elim h))))</juicy-ace-editor><div id='lean-full-code-26' style='display:none'>open classical
+
+namespace hide
+
+theorem prop_complete (a : Prop) : a = true ∨ a = false :=
+or.elim (em a)
+  (λ t, or.inl (propext (iff.intro (λ h, trivial) (λ h, t))))
+  (λ f, or.inr (propext (iff.intro (λ h, absurd h f) (λ h, false.elim h))))
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-26').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-org12faee9" class="outline-3">
+<h3 id="org12faee9"><span class="section-number-3"> 12.7</span> Propositional Decidability</h3>
+<div class="outline-text-3" id="text-1-7">
+<p>
+Taken together, the law of the excluded middle and the axiom of indefinite description
+imply that every proposition is decidable. The following is the
+contained in <code>logic.choice</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-27' mode="ace/mode/lean" readonly="true">noncomputable definition decidable_inhabited [instance] (a : Prop) : inhabited (decidable a) :=
+inhabited_of_nonempty
+  (or.elim (em a)
+    (assume Ha, nonempty.intro (inl Ha))
+    (assume Hna, nonempty.intro (inr Hna)))
+
+noncomputable definition prop_decidable [instance] (a : Prop) : decidable a :=
+arbitrary (decidable a)</juicy-ace-editor><div id='lean-full-code-27' style='display:none'>open classical decidable inhabited nonempty
+
+namespace hide
+
+noncomputable definition decidable_inhabited [instance] (a : Prop) : inhabited (decidable a) :=
+inhabited_of_nonempty
+  (or.elim (em a)
+    (assume Ha, nonempty.intro (inl Ha))
+    (assume Hna, nonempty.intro (inr Hna)))
+
+noncomputable definition prop_decidable [instance] (a : Prop) : decidable a :=
+arbitrary (decidable a)
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-27').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The definition <code>decidable_inhabited</code> uses the law of the excluded middle
+to show that <code>decidable a</code> is inhabited for any <code>a</code>. It is marked as
+an instance, and is silently used for for synthesizing the implicit
+argument in <code>arbitrary (decidable a)</code>.
+</p>
+
+<p>
+As an example, we use <code>some</code> to prove that if <code>f : A → B</code> is injective
+and <code>A</code> is inhabited, then <code>f</code> has a left inverse. To define the left
+inverse <code>linv</code>, we use the "dependent if-then-else" expression.
+Recall that <code>if h : c then t else e</code> is notation for <code>dite c (λ h : c,
+t) (λ h : ¬ c, e)</code>.  In the definition of <code>linv</code>, the
+<code>strong_indefinite_description</code> is used twice: first, to show that <code>(∃
+a : A, f a = b)</code> is "decidable", and then to choose an <code>a</code> such that
+<code>f a = b</code>. From a classical point of view, <code>linv</code> is a function. From
+a constructive point of view, it is unacceptable; since there is no
+way to implement such a function in general, the construction is not
+informative.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-28' mode="ace/mode/lean" readonly="true">open classical function
+
+noncomputable definition linv {A B : Type} [h : inhabited A] (f : A → B) : B → A :=
+λ b : B, if ex : (∃ a : A, f a = b) then some ex else arbitrary A
+
+theorem has_left_inverse_of_injective {A B : Type} {f : A → B}
+        : inhabited A → injective f → ∃ g, g ∘ f = id :=
+assume h   : inhabited A,
+assume inj : ∀ a₁ a₂, f a₁ = f a₂ → a₁ = a₂,
+have is_linv  : (linv f) ∘ f = id, from
+  funext (λ a,
+    assert ex  : ∃ a₁ : A, f a₁ = f a,   from exists.intro a rfl,
+    have   feq : f (some ex) = f a,      from !some_spec,
+    calc linv f (f a) = some ex   :  dif_pos ex
+               ...    = a         :  inj _ _ feq),
+exists.intro (linv f) is_linv
+</juicy-ace-editor><div id='lean-full-code-28' style='display:none'>open classical function
+
+noncomputable definition linv {A B : Type} [h : inhabited A] (f : A → B) : B → A :=
+λ b : B, if ex : (∃ a : A, f a = b) then some ex else arbitrary A
+
+theorem has_left_inverse_of_injective {A B : Type} {f : A → B}
+        : inhabited A → injective f → ∃ g, g ∘ f = id :=
+assume h   : inhabited A,
+assume inj : ∀ a₁ a₂, f a₁ = f a₂ → a₁ = a₂,
+have is_linv  : (linv f) ∘ f = id, from
+  funext (λ a,
+    assert ex  : ∃ a₁ : A, f a₁ = f a,   from exists.intro a rfl,
+    have   feq : f (some ex) = f a,      from !some_spec,
+    calc linv f (f a) = some ex   :  dif_pos ex
+               ...    = a         :  inj _ _ feq),
+exists.intro (linv f) is_linv
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-28').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org22a3beb" class="outline-3">
+<h3 id="org22a3beb"><span class="section-number-3"> 12.8</span> Constructive Choice</h3>
+<div class="outline-text-3" id="text-1-8">
+<p>
+In the standard library, we say a type <code>A</code> is <code>encodable</code> if there are
+functions <code>f : A → nat</code> and <code>g : nat → option A</code> such that for all
+<code>a : A</code>, <code>g (f a) = some a</code>. Here is the precise definition:
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-29' mode="ace/mode/lean" readonly="true">structure encodable [class] (A : Type) :=
+(encode : A → nat) (decode : nat → option A) (encodek : ∀ a, decode (encode a) = some a)</juicy-ace-editor><div id='lean-full-code-29' style='display:none'>namespace hide
+open option
+structure encodable [class] (A : Type) :=
+(encode : A → nat) (decode : nat → option A) (encodek : ∀ a, decode (encode a) = some a)
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-29').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The standard library shows that <code>indefinite_description</code> axiom is
+actually a theorem for any encodable type <code>A</code> and decidable predicate
+<code>p : A → Prop</code>. It provides the following definition and theorem,
+which are concrete realizations of <code>some</code> and <code>some_spec</code>,
+respectively.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-30' mode="ace/mode/lean" readonly="true">check @choose
+-- choose : Π {A : Type} {p : A → Prop} [c : encodable A] [d : decidable_pred p], (∃ (x : A), p x) → A
+check @choose_spec
+-- choose_spec : ∀ {A : Type} {p : A → Prop} [c : encodable A] [d : decidable_pred p] (ex : ∃ (x : A), p x), p (choose ex)</juicy-ace-editor><div id='lean-full-code-30' style='display:none'>import data.encodable
+open encodable subtype
+check @choose
+-- choose : Π {A : Type} {p : A → Prop} [c : encodable A] [d : decidable_pred p], (∃ (x : A), p x) → A
+check @choose_spec
+-- choose_spec : ∀ {A : Type} {p : A → Prop} [c : encodable A] [d : decidable_pred p] (ex : ∃ (x : A), p x), p (choose ex)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-30').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The construction is straightforward: it finds <code>a : A</code> satisfying <code>p</code>
+by enumerating the elements of <code>A</code> and testing whether they satisfy
+<code>p</code> or not.  We can show that this search always terminates because we
+have the assumption <code>∃ (x : A), p x</code>.
+</p>
+
+<p>
+We can use this to provide a constructive version of the theorem
+<code>has_left_inverse_of_injective</code>.  We remark this is not the only
+possible version. The constructive version contains more hypotheses
+than the classical version. In Bishop's terminology, it avoids
+"pseudo-generality."  Considering the classical construction, it is
+clear that once we have <code>choose</code>, we can construct the left inverse as
+long as we can decide whether <code>b</code> is in the image of a function <code>f : A
+→ B</code>.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-31' mode="ace/mode/lean" readonly="true">import data.encodable
+open encodable function
+
+section
+  parameters {A B : Type}
+  parameter  (f : A → B)
+  parameter  [inhA : inhabited A]
+  parameter  [dex  : ∀ b, decidable (∃ a, f a = b)]
+  parameter  [encA : encodable A]
+  parameter  [deqB : decidable_eq B]
+  include inhA dex encA deqB
+
+  definition finv : B → A :=
+  λ b : B, if ex : (∃ a, f a = b) then choose ex else arbitrary A
+
+  theorem has_left_inverse_of_injective : injective f → has_left_inverse f :=
+  assume inj : ∀ a₁ a₂, f a₁ = f a₂ → a₁ = a₂,
+  have is_linv : ∀ a, finv (f a) = a, from
+    (take a,
+      assert ex  : ∃ a₁, f a₁ = f a, from exists.intro a rfl,
+      have   feq : f (choose ex) = f a, from !choose_spec,
+      calc finv (f a) = choose ex :  dif_pos ex
+               ...    = a         :  inj _ _ feq),
+  exists.intro finv is_linv
+end
+</juicy-ace-editor><div id='lean-full-code-31' style='display:none'>import data.encodable
+open encodable function
+
+section
+  parameters {A B : Type}
+  parameter  (f : A → B)
+  parameter  [inhA : inhabited A]
+  parameter  [dex  : ∀ b, decidable (∃ a, f a = b)]
+  parameter  [encA : encodable A]
+  parameter  [deqB : decidable_eq B]
+  include inhA dex encA deqB
+
+  definition finv : B → A :=
+  λ b : B, if ex : (∃ a, f a = b) then choose ex else arbitrary A
+
+  theorem has_left_inverse_of_injective : injective f → has_left_inverse f :=
+  assume inj : ∀ a₁ a₂, f a₁ = f a₂ → a₁ = a₂,
+  have is_linv : ∀ a, finv (f a) = a, from
+    (take a,
+      assert ex  : ∃ a₁, f a₁ = f a, from exists.intro a rfl,
+      have   feq : f (choose ex) = f a, from !choose_spec,
+      calc finv (f a) = choose ex :  dif_pos ex
+               ...    = a         :  inj _ _ feq),
+  exists.intro finv is_linv
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-31').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The argument is essentially the same as the classical one; we have
+simply replaced the classical <code>some</code> with the constructive choice
+function <code>choose</code>, and added three extra hypotheses: <code>dex</code>, <code>encA</code> and
+<code>deqB</code>. The first one makes sure we can decide whether a value <code>b</code> is
+in the image of <code>f</code> or not, and the last two are needed to use
+<code>choose</code>.
+</p>
+
+<p>
+The standard library contains many <code>encodable</code> types and shows that
+many types have decidable equality.  The hypothesis <code>dex</code> can be
+satisfied in many cases. For example, it is trivially satisfied if <code>f</code>
+is surjective. It is also satisfied whenever <code>A</code> is finite.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-32' mode="ace/mode/lean" readonly="true">section
+  parameters {A B : Type} (f : A → B)
+
+  definition decidable_in_image_of_surjective : surjective f → ∀ b, decidable (∃ a, f a = b) :=
+  assume s : surjective f, take b,
+  decidable.inl (s b)
+
+  definition decidable_in_image_of_fintype_of_deceq [instance]
+             [finA : fintype A] [deqB : decidable_eq B] : ∀ b, decidable (∃ a, f a = b) :=
+  take b, decidable_exists_finite
+end</juicy-ace-editor><div id='lean-full-code-32' style='display:none'>import data.encodable
+open encodable function
+
+section
+  parameters {A B : Type} (f : A → B)
+
+  definition decidable_in_image_of_surjective : surjective f → ∀ b, decidable (∃ a, f a = b) :=
+  assume s : surjective f, take b,
+  decidable.inl (s b)
+
+  definition decidable_in_image_of_fintype_of_deceq [instance]
+             [finA : fintype A] [deqB : decidable_eq B] : ∀ b, decidable (∃ a, f a = b) :=
+  take b, decidable_exists_finite
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-32').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgc68dbfa" class="outline-3">
+<h3 id="orgc68dbfa"><span class="section-number-3"> 12.9</span> Tracking used axioms</h3>
+<div class="outline-text-3" id="text-1-9">
+<p>
+The Lean standard library contains only 3 axioms: <code>quot.sound</code>, <code>propext</code> and <code>strong_indefinite_description</code>.
+Most of the library depends only on the first two.
+The command <code>print axioms</code> displays all axioms that have been asserted/imported into the current logical context.
+Similarly, the command <code>print axioms decl_name</code> prints all axioms the declaration <code>decl_name</code> depends on.
+</p>
+
+<p>
+<i>IMPORTANT</i>: in the Lean web version, we erase the proof of most
+theorems. The idea is to reduce the size of the file that must be
+downloaded to run Lean on your web browser. So, the result of the
+<code>print axioms</code> commands is not precise on the web version. Please use
+the Lean native application if you are interested in using these
+commands.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-33' mode="ace/mode/lean" readonly="true">print axioms
+print axioms nat.add
+print axioms finset.union
+print axioms set.empty_union
+print axioms classical.some</juicy-ace-editor><div id='lean-full-code-33' style='display:none'>import data.finset data.set
+print axioms
+print axioms nat.add
+print axioms finset.union
+print axioms set.empty_union
+print axioms classical.some
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-33').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,1700 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:44 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theorem Proving in Lean</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]]Jeremy Avigad, [[http://leodemoura.github.io][Leonardo de Moura]]Leonardo de Moura, [[http://www.cs.cmu.edu/~soonhok][Soonho Kong]]Soonho Kong" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Theorem Proving in Lean</h1>
+
+<div id="outline-container-org566b5d9" class="outline-2">
+<h2 id="Tactic-Style_Proofs"><a id="org566b5d9"></a><span class="section-number-2"> 11</span> Tactic-Style Proofs</h2>
+<div class="outline-text-2" id="text-Tactic-Style_Proofs">
+<p>
+In this chapter, we describe an alternative approach to constructing
+proofs, using <i>tactics</i>. A proof term is a representation of a
+mathematical proof; tactics are commands, or instructions, that
+describe how to build such a proof. Informally, we might begin a
+mathematical proof by saying "to prove the forward direction, unfold
+the definition, apply the previous lemma, and simplify." Just as these
+are instructions that tell the reader how to find the relevant proof,
+tactics are instructions that tell Lean how to construct a proof term.
+They naturally support an incremental style of writing proofs, in
+which users decompose a proof and work on goals one step at a time.
+</p>
+
+<p>
+We will describe proofs that consist of sequences of tactics as
+"tactic-style" proofs, to contrast with the ways of writing proof
+terms we have seen so far, which we will call "term-style"
+proofs. Each style has its own advantages and disadvantages. One
+important difference is that term-style proofs are elaborated
+globally, and information gathered from one part of a term can be used
+to fill in implicit information in another part of the term. In
+contrast, tactics apply locally, and are narrowly focused on a single
+subgoal in the proof.
+</p>
+</div>
+
+<div id="outline-container-org864023d" class="outline-3">
+<h3 id="org864023d"><span class="section-number-3"> 11.1</span> Entering the Tactic Mode</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+Conceptually, stating a theorem or introducing a <code>have</code> statement
+creates a goal, namely, the goal of constructing a term with the
+expected type. For example, the following creates the goal of
+constructing a term of type <code>p ∧ q ∧ p</code>, in a context with constants
+<code>p q : Prop</code>, <code>Hp : p</code> and <code>Hq : q</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-1' mode="ace/mode/lean" readonly="true">theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+sorry
+</juicy-ace-editor><div id='lean-full-code-1' style='display:none'>theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+sorry
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-1').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+We can write this goal as follows:
+</p>
+<div class="org-src-container">
+
+<pre class="src src-text">p : Prop, q : Prop, Hp : p, Hq : q &#8866; p &#8743; q &#8743; p
+</pre>
+</div>
+<p>
+Indeed, if you replace the "sorry" by an underscore in the example
+above, Lean will report that it is exactly this goal that has been
+left unsolved.
+</p>
+
+<p>
+Ordinarily, we meet such a goal by writing an explicit term. But
+wherever a term is expected, Lean allows us to insert instead a <code>begin
+... end</code> block, followed by a sequence of commands, separated by
+commas. We can prove the theorem above in that way:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-3' mode="ace/mode/lean" readonly="true">theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+begin
+  apply and.intro,
+  exact Hp,
+  apply and.intro,
+  exact Hq,
+  exact Hp
+end</juicy-ace-editor><div id='lean-full-code-3' style='display:none'>theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+begin
+  apply and.intro,
+  exact Hp,
+  apply and.intro,
+  exact Hq,
+  exact Hp
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-3').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The <code>apply</code> tactic applies an expression, viewed as denoting a
+function with zero or more arguments. It unifies the conclusion with
+the expression in the current goal, and creates new goals for the
+remaining arguments, provided that no later arguments depend on
+them. In the example above, the command <code>apply and.intro</code> yields two
+subgoals:
+</p>
+<div class="org-src-container">
+
+<pre class="src src-text">p : Prop,
+q : Prop,
+Hp : p,
+Hq : q
+&#8866; p
+
+&#8866; q &#8743; p
+</pre>
+</div>
+<p>
+For brevity, Lean only displays the context for the first goal, which
+is the one addressed by the next tactic command. The first goal is met
+with the command <code>exact Hp</code>. The <code>exact</code> command is just a variant of
+<code>apply</code> which signals that the expression given should fill the goal
+exactly. It is good form to use it in a tactic proof, since its
+failure signals that something has gone wrong; but otherwise <code>apply</code>
+would work just as well.
+</p>
+
+<p>
+You can see the resulting proof term with <code>print</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-5' mode="ace/mode/lean" readonly="true">reveal test
+print test</juicy-ace-editor><div id='lean-full-code-5' style='display:none'>theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+begin
+  apply and.intro,
+  exact Hp,
+  apply and.intro,
+  exact Hq,
+  exact Hp
+end
+
+reveal test
+print test
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-5').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+You can write a tactic script incrementally. If you run Lean on an
+incomplete tactic proof bracketed by <code>begin</code> and <code>end</code>, the system
+reports all the unsolved goals that remain. If you are running Lean
+with its Emacs interface, you can see this information by putting your
+cursor on the <code>end</code> symbol, which should be underlined. In the Emacs
+interface, there is another extremely useful trick: if you put your
+cursor on a line of a tactic proof and press "C-c C-g", Lean will show
+you the goal that remains at the end of the line.
+</p>
+
+<p>
+Tactic commands can take compound expressions, not just single
+identifiers. The following is a shorter version of the preceding
+proof:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-6' mode="ace/mode/lean" readonly="true">theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+begin
+  apply (and.intro Hp),
+  exact (and.intro Hq Hp)
+end</juicy-ace-editor><div id='lean-full-code-6' style='display:none'>theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+begin
+  apply (and.intro Hp),
+  exact (and.intro Hq Hp)
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-6').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Unsurprisingly, it produces exactly the same proof term.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-7' mode="ace/mode/lean" readonly="true">reveal test
+print test</juicy-ace-editor><div id='lean-full-code-7' style='display:none'>theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+begin
+  apply (and.intro Hp),
+  exact (and.intro Hq Hp)
+end
+
+reveal test
+print test
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-7').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Tactic applications can also be concatenated with a
+semicolon. Formally speaking, there is only one (compound) step in the
+following proof:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-8' mode="ace/mode/lean" readonly="true">theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+begin
+  apply (and.intro Hp); exact (and.intro Hq Hp)
+end
+</juicy-ace-editor><div id='lean-full-code-8' style='display:none'>theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+begin
+  apply (and.intro Hp); exact (and.intro Hq Hp)
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-8').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Whenever a proof term is expected, instead of using a <code>begin...end</code>
+block, you can write the <code>by</code> keyword followed by a single tactic:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-9' mode="ace/mode/lean" readonly="true">theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+by apply (and.intro Hp); exact (and.intro Hq Hp)
+</juicy-ace-editor><div id='lean-full-code-9' style='display:none'>theorem test (p q : Prop) (Hp : p) (Hq : q) : p ∧ q ∧ p :=
+by apply (and.intro Hp); exact (and.intro Hq Hp)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-9').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the Lean Emacs mode, if you put your cursor on the "b" in "by" and
+press "C-c C-g", Lean shows you the goal that the tactic is supposed
+to meet.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgfd06fe8" class="outline-3">
+<h3 id="orgfd06fe8"><span class="section-number-3"> 11.2</span> Basic Tactics</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+In addition to <code>apply</code> and <code>exact</code>, another useful tactic is <code>intro</code>,
+which introduces a hypothesis. What follows is an example of an
+identity from propositional logic that we proved in Section <a href="#" onclick="myModule.loadTutorial('03_Propositions_and_Proofs.org', 'Examples_of_Propositional_Validities')">Examples of Propositional Validities</a>, but now prove using tactics. We adopt the
+following convention regarding indentation: whenever a tactic
+introduces one or more additional subgoals, we indent another two
+spaces, until the additional subgoals are deleted.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-10' mode="ace/mode/lean" readonly="true">example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+begin
+  apply iff.intro,
+    intro H,
+    apply (or.elim (and.elim_right H)),
+      intro Hq,
+      apply or.intro_left,
+      apply and.intro,
+        exact (and.elim_left H),
+      exact Hq,
+    intro Hr,
+    apply or.intro_right,
+    apply and.intro,
+    exact (and.elim_left H),
+    exact Hr,
+  intro H,
+  apply (or.elim H),
+    intro Hpq,
+    apply and.intro,
+      exact (and.elim_left Hpq),
+    apply or.intro_left,
+    exact (and.elim_right Hpq),
+  intro Hpr,
+  apply and.intro,
+    exact (and.elim_left Hpr),
+  apply or.intro_right,
+  exact (and.elim_right Hpr)
+end
+</juicy-ace-editor><div id='lean-full-code-10' style='display:none'>example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+begin
+  apply iff.intro,
+    intro H,
+    apply (or.elim (and.elim_right H)),
+      intro Hq,
+      apply or.intro_left,
+      apply and.intro,
+        exact (and.elim_left H),
+      exact Hq,
+    intro Hr,
+    apply or.intro_right,
+    apply and.intro,
+    exact (and.elim_left H),
+    exact Hr,
+  intro H,
+  apply (or.elim H),
+    intro Hpq,
+    apply and.intro,
+      exact (and.elim_left Hpq),
+    apply or.intro_left,
+    exact (and.elim_right Hpq),
+  intro Hpr,
+  apply and.intro,
+    exact (and.elim_left Hpr),
+  apply or.intro_right,
+  exact (and.elim_right Hpr)
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-10').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The <code>intro</code> command can more generally be used to introduce a variable of any type:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-11' mode="ace/mode/lean" readonly="true">example (A : Type) : A → A :=
+begin
+  intro a,
+  exact a
+end
+
+example (A : Type) : ∀ x : A, x = x :=
+begin
+  intro x,
+  exact eq.refl x
+end
+</juicy-ace-editor><div id='lean-full-code-11' style='display:none'>example (A : Type) : A → A :=
+begin
+  intro a,
+  exact a
+end
+
+example (A : Type) : ∀ x : A, x = x :=
+begin
+  intro x,
+  exact eq.refl x
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-11').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+It has a plural form, <code>intros</code>, which takes a list of names.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-12' mode="ace/mode/lean" readonly="true">example : ∀ a b c : nat, a = b → a = c → c = b :=
+begin
+  intros [a, b, c, H1, H2],
+  exact eq.trans (eq.symm H2) H1
+end
+</juicy-ace-editor><div id='lean-full-code-12' style='display:none'>example : ∀ a b c : nat, a = b → a = c → c = b :=
+begin
+  intros [a, b, c, H1, H2],
+  exact eq.trans (eq.symm H2) H1
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-12').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The <code>intros</code> command can also be used without any arguments, in which
+case, it chooses names and introduces as many variables as it can. We
+will see an example of this in a moment.
+</p>
+
+<p>
+The <code>assumption</code> tactic looks through the assumptions in context of the
+current goal, and if there is one matching the conclusion, it applies
+it.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-13' mode="ace/mode/lean" readonly="true">example (H1 : x = y) (H2 : y = z) (H3 : z = w) : x = w :=
+begin
+  apply (eq.trans H1),
+  apply (eq.trans H2),
+  assumption   -- applied H3
+end</juicy-ace-editor><div id='lean-full-code-13' style='display:none'>import data.nat
+open nat
+
+variables x y z w : ℕ
+
+example (H1 : x = y) (H2 : y = z) (H3 : z = w) : x = w :=
+begin
+  apply (eq.trans H1),
+  apply (eq.trans H2),
+  assumption   -- applied H3
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-13').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+It will unify metavariables in the conclusion if necessary:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-14' mode="ace/mode/lean" readonly="true">example (H1 : x = y) (H2 : y = z) (H3 : z = w) : x = w :=
+begin
+  apply eq.trans,
+  assumption,     -- solves x = ?b with H1
+  apply eq.trans,
+  assumption,     -- solves ?b = w with H2
+  assumption      -- solves z = w with H3
+end</juicy-ace-editor><div id='lean-full-code-14' style='display:none'>import data.nat
+open nat
+
+variables x y z w : ℕ
+
+example (H1 : x = y) (H2 : y = z) (H3 : z = w) : x = w :=
+begin
+  apply eq.trans,
+  assumption,     -- solves x = ?b with H1
+  apply eq.trans,
+  assumption,     -- solves ?b = w with H2
+  assumption      -- solves z = w with H3
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-14').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The following example uses the <code>intros</code> command to introduce the three
+variables and two hypotheses automatically:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-15' mode="ace/mode/lean" readonly="true">example : ∀ a b c : nat, a = b → a = c → c = b :=
+begin
+  intros,
+  apply eq.trans,
+  apply eq.symm,
+  assumption,
+  assumption
+end
+</juicy-ace-editor><div id='lean-full-code-15' style='display:none'>example : ∀ a b c : nat, a = b → a = c → c = b :=
+begin
+  intros,
+  apply eq.trans,
+  apply eq.symm,
+  assumption,
+  assumption
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-15').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The <code>repeat</code> combinator can be used to simplify the last two lines:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-16' mode="ace/mode/lean" readonly="true">example : ∀ a b c : nat, a = b → a = c → c = b :=
+begin
+  intros,
+  apply eq.trans,
+  apply eq.symm,
+  repeat assumption
+end
+</juicy-ace-editor><div id='lean-full-code-16' style='display:none'>example : ∀ a b c : nat, a = b → a = c → c = b :=
+begin
+  intros,
+  apply eq.trans,
+  apply eq.symm,
+  repeat assumption
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-16').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+There is variant of <code>apply</code> called <code>fapply</code> that is more aggressive in
+creating new subgoals for arguments. Here is an example of how it is
+used:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-17' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+example : ∃ a : ℕ, a = a :=
+begin
+  fapply exists.intro,
+  exact nat.zero,
+  apply rfl
+end
+</juicy-ace-editor><div id='lean-full-code-17' style='display:none'>import data.nat
+open nat
+
+example : ∃ a : ℕ, a = a :=
+begin
+  fapply exists.intro,
+  exact nat.zero,
+  apply rfl
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-17').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The command <code>fapply exists.intro</code> creates two goals. The first is to
+provide a natural number, <code>a</code>, and the second is to prove that <code>a =
+a</code>. Notice that the second goal depends on the first; solving the
+first goal instantiates a metavariable in the second.
+</p>
+
+<p>
+Notice also that we could not write <code>exact 0</code> in the proof above,
+because <code>0</code> is a numeral that is coerced to a natural number. In the
+context of a tactic proof, expressions are elaborated "locally,"
+before being sent to the tactic command. When the tactic command is
+being processed, Lean does not have enough information to determine
+that <code>0</code> needs to be coerced. We can get around that by stating the
+type explicitly:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-18' mode="ace/mode/lean" readonly="true">example : ∃ a : ℕ, a = a :=
+begin
+  fapply exists.intro,
+  exact (0 : ℕ),
+  apply rfl
+end</juicy-ace-editor><div id='lean-full-code-18' style='display:none'>import data.nat
+open nat
+
+example : ∃ a : ℕ, a = a :=
+begin
+  fapply exists.intro,
+  exact (0 : ℕ),
+  apply rfl
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-18').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Another tactic that is sometimes useful is the <code>generalize</code> tactic,
+which is, in a sense, an inverse to <code>intro</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-19' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+variables x y z : ℕ
+
+example : x = x :=
+begin
+  generalize x, -- goal is x : ℕ ⊢ ∀ (x : ℕ), x = x
+  intro y,      -- goal is x y : ℕ ⊢ y = y
+  apply rfl
+end
+
+example (H : x = y) : y = x :=
+begin
+  generalize H, -- goal is x y : ℕ, H : x = y ⊢ y = x
+  intro H1,     -- goal is x y : ℕ, H H1 : x = y ⊢ y = x
+  apply (eq.symm H1)
+end
+</juicy-ace-editor><div id='lean-full-code-19' style='display:none'>import data.nat
+open nat
+
+variables x y z : ℕ
+
+example : x = x :=
+begin
+  generalize x, -- goal is x : ℕ ⊢ ∀ (x : ℕ), x = x
+  intro y,      -- goal is x y : ℕ ⊢ y = y
+  apply rfl
+end
+
+example (H : x = y) : y = x :=
+begin
+  generalize H, -- goal is x y : ℕ, H : x = y ⊢ y = x
+  intro H1,     -- goal is x y : ℕ, H H1 : x = y ⊢ y = x
+  apply (eq.symm H1)
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-19').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the first example above, the <code>generalize</code> tactic generalizes the
+conclusion over the variable <code>x</code>, turning the goal into a <code>∀</code>. In the
+second, it generalizes the goal over the hypothesis <code>H</code>, putting the
+antecedent explicitly into the goal. We generalize any term, not just
+variables:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-20' mode="ace/mode/lean" readonly="true">example : x + y + z = x + y + z :=
+begin
+  generalize (x + y + z), -- goal is x y z : ℕ ⊢ ∀ (x : ℕ), x = x
+  intro w,                -- goal is x y z w : ℕ ⊢ w = w
+  apply rfl
+end</juicy-ace-editor><div id='lean-full-code-20' style='display:none'>import data.nat
+open nat
+
+variables x y z : ℕ
+
+example : x + y + z = x + y + z :=
+begin
+  generalize (x + y + z), -- goal is x y z : ℕ ⊢ ∀ (x : ℕ), x = x
+  intro w,                -- goal is x y z w : ℕ ⊢ w = w
+  apply rfl
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-20').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Notice that once we generalize over <code>x + y + z</code>, the variables <code>x y
+z : ℕ</code> in the context become irrelevant. (The same is true of the
+hypothesis <code>H</code> in the previous example.) The <code>clear</code> tactic throws away
+elements of the context, when it is safe to do so:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-21' mode="ace/mode/lean" readonly="true">example : x + y + z = x + y + z :=
+begin
+  generalize (x + y + z), -- goal is x y z : ℕ ⊢ ∀ (x : ℕ), x = x
+  clear x, clear y, clear z,
+  intro w,                -- goal is w : ℕ ⊢ w = w
+  apply rfl
+end</juicy-ace-editor><div id='lean-full-code-21' style='display:none'>import data.nat
+open nat
+
+variables x y z : ℕ
+
+example : x + y + z = x + y + z :=
+begin
+  generalize (x + y + z), -- goal is x y z : ℕ ⊢ ∀ (x : ℕ), x = x
+  clear x, clear y, clear z,
+  intro w,                -- goal is w : ℕ ⊢ w = w
+  apply rfl
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-21').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The <code>revert</code> tactic is a combination of <code>generalize</code> and <code>clear</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-22' mode="ace/mode/lean" readonly="true">example : x = x :=
+begin
+  revert x,     -- goal is ⊢ ∀ (x : ℕ), x = x
+  intro y,      -- goal is y : ℕ ⊢ y = y
+  apply rfl
+end
+
+example (H : x = y) : y = x :=
+begin
+  revert H,     -- goal is x y : ℕ ⊢ x = y → y = x
+  intro H1,     -- goal is x y : ℕ, H1 : x = y ⊢ y = x
+  apply (eq.symm H1)
+end</juicy-ace-editor><div id='lean-full-code-22' style='display:none'>import data.nat
+open nat
+
+variables x y z w : ℕ
+
+example : x = x :=
+begin
+  revert x,     -- goal is ⊢ ∀ (x : ℕ), x = x
+  intro y,      -- goal is y : ℕ ⊢ y = y
+  apply rfl
+end
+
+example (H : x = y) : y = x :=
+begin
+  revert H,     -- goal is x y : ℕ ⊢ x = y → y = x
+  intro H1,     -- goal is x y : ℕ, H1 : x = y ⊢ y = x
+  apply (eq.symm H1)
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-22').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Like <code>intro</code>, the tactics <code>generalize</code>, <code>clear</code>, and <code>revert</code> have
+plural forms. For example, we could have written above:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-23' mode="ace/mode/lean" readonly="true">example : x + y + z = x + y + z :=
+begin
+  generalize (x + y + z), -- goal is x y z : ℕ ⊢ ∀ (x : ℕ), x = x
+  clears x y z,
+  intro w,                -- goal is w : ℕ ⊢ w = w
+  apply rfl
+end</juicy-ace-editor><div id='lean-full-code-23' style='display:none'>import data.nat
+open nat
+
+variables x y z : ℕ
+
+example : x + y + z = x + y + z :=
+begin
+  generalize (x + y + z), -- goal is x y z : ℕ ⊢ ∀ (x : ℕ), x = x
+  clears x y z,
+  intro w,                -- goal is w : ℕ ⊢ w = w
+  apply rfl
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-23').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2fe0dbc" class="outline-3">
+<h3 id="org2fe0dbc"><span class="section-number-3"> 11.3</span> Structuring Tactic Proofs</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+One thing that is nice about Lean's proof-writing syntax is that it is
+possible to mix term-style and tactic-style proofs, and pass
+between the two freely. For example, the tactics <code>apply</code> and <code>exact</code>
+expect arbitrary terms, which you can write using <code>have</code>, <code>show</code>,
+<code>obtains</code>, and so on. Conversely, when writing an arbitrary Lean term,
+you can always invoke the tactic mode by inserting a <code>begin...end</code>
+block. In the next example, we use <code>show</code> within a tactic block to
+fulfill a goal by providing an explicit term.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-24' mode="ace/mode/lean" readonly="true">example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+begin
+  apply iff.intro,
+    intro H,
+    apply (or.elim (and.elim_right H)),
+      intro Hq,
+      show (p ∧ q) ∨ (p ∧ r),
+        from or.inl (and.intro (and.elim_left H) Hq),
+    intro Hr,
+    show (p ∧ q) ∨ (p ∧ r),
+      from or.inr (and.intro (and.elim_left H) Hr),
+  intro H,
+  apply (or.elim H),
+    intro Hpq,
+    show p ∧ (q ∨ r), from
+      and.intro
+        (and.elim_left Hpq)
+        (or.inl (and.elim_right Hpq)),
+  intro Hpr,
+  show p ∧ (q ∨ r), from
+    and.intro
+      (and.elim_left Hpr)
+      (or.inr (and.elim_right Hpr))
+end
+</juicy-ace-editor><div id='lean-full-code-24' style='display:none'>example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+begin
+  apply iff.intro,
+    intro H,
+    apply (or.elim (and.elim_right H)),
+      intro Hq,
+      show (p ∧ q) ∨ (p ∧ r),
+        from or.inl (and.intro (and.elim_left H) Hq),
+    intro Hr,
+    show (p ∧ q) ∨ (p ∧ r),
+      from or.inr (and.intro (and.elim_left H) Hr),
+  intro H,
+  apply (or.elim H),
+    intro Hpq,
+    show p ∧ (q ∨ r), from
+      and.intro
+        (and.elim_left Hpq)
+        (or.inl (and.elim_right Hpq)),
+  intro Hpr,
+  show p ∧ (q ∨ r), from
+    and.intro
+      (and.elim_left Hpr)
+      (or.inr (and.elim_right Hpr))
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-24').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+You can also nest <code>begin...end</code> blocks within other <code>begin...end</code>
+blocks.  In a nested block, Lean focuses on the first goal, and
+generates an error if it has not been fully solved at the end of the
+block.  This can be helpful in indicating the separate proofs of
+multiple subgoals introduced by a tactic.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-25' mode="ace/mode/lean" readonly="true">example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+begin
+  apply iff.intro,
+  begin
+    intro H,
+    apply (or.elim (and.elim_right H)),
+      intro Hq,
+      show (p ∧ q) ∨ (p ∧ r),
+        from or.inl (and.intro (and.elim_left H) Hq),
+    intro Hr,
+    show (p ∧ q) ∨ (p ∧ r),
+      from or.inr (and.intro (and.elim_left H) Hr),
+  end,
+  begin
+    intro H,
+    apply (or.elim H),
+    begin
+      intro Hpq,
+      show p ∧ (q ∨ r), from
+        and.intro
+          (and.elim_left Hpq)
+          (or.inl (and.elim_right Hpq)),
+    end,
+    begin
+      intro Hpr,
+      show p ∧ (q ∨ r), from
+        and.intro
+          (and.elim_left Hpr)
+          (or.inr (and.elim_right Hpr))
+    end
+  end
+end
+</juicy-ace-editor><div id='lean-full-code-25' style='display:none'>example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+begin
+  apply iff.intro,
+  begin
+    intro H,
+    apply (or.elim (and.elim_right H)),
+      intro Hq,
+      show (p ∧ q) ∨ (p ∧ r),
+        from or.inl (and.intro (and.elim_left H) Hq),
+    intro Hr,
+    show (p ∧ q) ∨ (p ∧ r),
+      from or.inr (and.intro (and.elim_left H) Hr),
+  end,
+  begin
+    intro H,
+    apply (or.elim H),
+    begin
+      intro Hpq,
+      show p ∧ (q ∨ r), from
+        and.intro
+          (and.elim_left Hpq)
+          (or.inl (and.elim_right Hpq)),
+    end,
+    begin
+      intro Hpr,
+      show p ∧ (q ∨ r), from
+        and.intro
+          (and.elim_left Hpr)
+          (or.inr (and.elim_right Hpr))
+    end
+  end
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-25').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Notice that you still need to use a comma after a <code>begin...end</code>
+block when there are remaining goals to be discharged. Within a
+<code>begin...end</code> block, you can abbreviate nested occurrences of
+<code>begin</code> and <code>end</code> with curly braces:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-26' mode="ace/mode/lean" readonly="true">example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+begin
+  apply iff.intro,
+  { intro H,
+    apply (or.elim (and.elim_right H)),
+    { intro Hq,
+      apply or.intro_left,
+      apply and.intro,
+      { exact (and.elim_left H) },
+      { exact Hq }},
+    { intro Hr,
+      apply or.intro_right,
+      apply and.intro,
+      { exact (and.elim_left H)},
+      { exact Hr }}},
+  { intro H,
+    apply (or.elim H),
+    { intro Hpq,
+      apply and.intro,
+      { exact (and.elim_left Hpq) },
+      { apply or.intro_left,
+        exact (and.elim_right Hpq) }},
+    { intro Hpr,
+      apply and.intro,
+      { exact (and.elim_left Hpr)},
+      { apply or.intro_right,
+          exact (and.elim_right Hpr) }}}
+end
+</juicy-ace-editor><div id='lean-full-code-26' style='display:none'>example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) :=
+begin
+  apply iff.intro,
+  { intro H,
+    apply (or.elim (and.elim_right H)),
+    { intro Hq,
+      apply or.intro_left,
+      apply and.intro,
+      { exact (and.elim_left H) },
+      { exact Hq }},
+    { intro Hr,
+      apply or.intro_right,
+      apply and.intro,
+      { exact (and.elim_left H)},
+      { exact Hr }}},
+  { intro H,
+    apply (or.elim H),
+    { intro Hpq,
+      apply and.intro,
+      { exact (and.elim_left Hpq) },
+      { apply or.intro_left,
+        exact (and.elim_right Hpq) }},
+    { intro Hpr,
+      apply and.intro,
+      { exact (and.elim_left Hpr)},
+      { apply or.intro_right,
+          exact (and.elim_right Hpr) }}}
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-26').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Here we have adopted the convention that whenever a tactic increases
+the number of goals to be solved, the tactics that solve each
+subsequent goal are enclosed in braces. This may not increase
+readability much, but it does help clarify the structure of the proof.
+</p>
+
+<p>
+There is a <code>have</code> construct for tactic-style proofs that is similar to
+the one for term-style proofs. In the proof below, the first <code>have</code>
+creates the subgoal <code>Hp : p</code>. The <code>from</code> clause solves it, and after
+that <code>Hp</code> is available to subsequent tactics. The example illustrates
+that you can also use another <code>begin...end</code> block, or a <code>by</code> clause,
+to prove a subgoal introduced by <code>have</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-27' mode="ace/mode/lean" readonly="true">variables p q : Prop
+
+example : p ∧ q ↔ q ∧ p :=
+begin
+  apply iff.intro,
+  begin
+    intro H,
+    have Hp : p, from and.left H,
+    have Hq : q, from and.right H,
+    apply and.intro,
+    repeat assumption
+  end,
+  begin
+    intro H,
+    have Hp : p,
+      begin
+        apply and.right,
+        apply H
+      end,
+    have Hq : q, by apply and.left; exact H,
+    apply (and.intro Hp Hq)
+  end
+end</juicy-ace-editor><div id='lean-full-code-27' style='display:none'>variables p q : Prop
+
+example : p ∧ q ↔ q ∧ p :=
+begin
+  apply iff.intro,
+  begin
+    intro H,
+    have Hp : p, from and.left H,
+    have Hq : q, from and.right H,
+    apply and.intro,
+    repeat assumption
+  end,
+  begin
+    intro H,
+    have Hp : p,
+      begin
+        apply and.right,
+        apply H
+      end,
+    have Hq : q, by apply and.left; exact H,
+    apply (and.intro Hp Hq)
+  end
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-27').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org9799134" class="outline-3">
+<h3 id="org9799134"><span class="section-number-3"> 11.4</span> Cases and Pattern Matching</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+The <code>cases</code> tactic works on elements of an inductively defined
+type. It does what the name suggests: it decomposes an element of an
+inductive type according to each of the possible constructors, and
+leaves a goal for each case. Note that the following example also uses
+the <code>revert</code> tactic to move the hypothesis into the conclusion of the
+goal.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-28' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+example (x : ℕ) (H : x ≠ 0) : succ (pred x) = x :=
+begin
+  revert H,
+  cases x,
+  -- first goal: ⊢ 0 ≠ 0 → succ (pred 0) = 0
+  { intro H1,
+    apply (absurd rfl H1)},
+  -- second goal: ⊢ succ a ≠ 0 → succ (pred (succ a)) = succ a
+  { intro H1,
+    apply rfl}
+end
+</juicy-ace-editor><div id='lean-full-code-28' style='display:none'>import data.nat
+open nat
+
+example (x : ℕ) (H : x ≠ 0) : succ (pred x) = x :=
+begin
+  revert H,
+  cases x,
+  -- first goal: ⊢ 0 ≠ 0 → succ (pred 0) = 0
+  { intro H1,
+    apply (absurd rfl H1)},
+  -- second goal: ⊢ succ a ≠ 0 → succ (pred (succ a)) = succ a
+  { intro H1,
+    apply rfl}
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-28').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The name of the <code>cases</code> tactic is particularly well suited to use with disjunctions:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-29' mode="ace/mode/lean" readonly="true">example (a b : Prop) : a ∨ b → b ∨ a :=
+begin
+  intro H,
+  cases H with [Ha, Hb],
+  { exact or.inr Ha },
+  { exact or.inl Hb }
+end
+</juicy-ace-editor><div id='lean-full-code-29' style='display:none'>example (a b : Prop) : a ∨ b → b ∨ a :=
+begin
+  intro H,
+  cases H with [Ha, Hb],
+  { exact or.inr Ha },
+  { exact or.inl Hb }
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-29').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the next example, we rely on the decidability of equality for the
+natural numbers to carry out another proof by cases:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-30' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+check nat.sub_self
+
+example (m n : nat) : m - n = 0 ∨ m ≠ n :=
+begin
+  cases (decidable.em (m = n)) with [Heq, Hne],
+  { apply eq.subst Heq,
+    exact or.inl (nat.sub_self m)},
+  { apply or.inr Hne }
+end
+</juicy-ace-editor><div id='lean-full-code-30' style='display:none'>import data.nat
+open nat
+
+check nat.sub_self
+
+example (m n : nat) : m - n = 0 ∨ m ≠ n :=
+begin
+  cases (decidable.em (m = n)) with [Heq, Hne],
+  { apply eq.subst Heq,
+    exact or.inl (nat.sub_self m)},
+  { apply or.inr Hne }
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-30').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The <code>cases</code> tactic can also be used to extract the arguments of a
+constructor, even for an inductive type like <code>and</code>, for which there is
+only one constructor.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-31' mode="ace/mode/lean" readonly="true">example (p q : Prop) : p ∧ q → q ∧ p :=
+begin
+  intro H,
+  cases H with [H1, H2],
+  apply and.intro,
+  exact H2,
+  exact H1
+end
+</juicy-ace-editor><div id='lean-full-code-31' style='display:none'>example (p q : Prop) : p ∧ q → q ∧ p :=
+begin
+  intro H,
+  cases H with [H1, H2],
+  apply and.intro,
+  exact H2,
+  exact H1
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-31').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Here the <code>with</code> clause names the two arguments to the constructor. If
+you omit it, Lean will choose a name for you. If there are multiple
+constructors with arguments, you can provide <code>cases</code> with a list of
+all the names, arranged sequentially:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-32' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+inductive foo : Type :=
+| bar1 : ℕ → ℕ → foo
+| bar2 : ℕ → ℕ → ℕ → foo
+
+definition silly (x : foo) : ℕ :=
+begin
+  cases x with [a, b, c, d, e],
+  exact b,    -- a, b, c are in the context
+  exact e     -- d, e    are in the context
+end
+</juicy-ace-editor><div id='lean-full-code-32' style='display:none'>import data.nat
+open nat
+
+inductive foo : Type :=
+| bar1 : ℕ → ℕ → foo
+| bar2 : ℕ → ℕ → ℕ → foo
+
+definition silly (x : foo) : ℕ :=
+begin
+  cases x with [a, b, c, d, e],
+  exact b,    -- a, b, c are in the context
+  exact e     -- d, e    are in the context
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-32').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+You can also use pattern matching in a tactic block. With
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-33' mode="ace/mode/lean" readonly="true">example (p q r : Prop) : p ∧ q ↔ q ∧ p :=
+begin
+  apply iff.intro,
+  { intro H,
+    match H with
+    |  and.intro H₁ H₂ := by apply and.intro; repeat assumption
+    end },
+  { intro H,
+    match H with
+    | and.intro H₁ H₂ := by apply and.intro; repeat assumption
+    end },
+end
+</juicy-ace-editor><div id='lean-full-code-33' style='display:none'>example (p q r : Prop) : p ∧ q ↔ q ∧ p :=
+begin
+  apply iff.intro,
+  { intro H,
+    match H with
+    |  and.intro H₁ H₂ := by apply and.intro; repeat assumption
+    end },
+  { intro H,
+    match H with
+    | and.intro H₁ H₂ := by apply and.intro; repeat assumption
+    end },
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-33').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+With pattern matching, the first and third examples in this section
+could be written as follows:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-34' mode="ace/mode/lean" readonly="true">example (x : ℕ) (H : x ≠ 0) : succ (pred x) = x :=
+begin
+  revert H,
+  match x with
+  | 0      := by intro H1; exact (absurd rfl H1)
+  | succ y := by intro H1; apply rfl
+  end
+end
+
+definition silly (x : foo) : ℕ :=
+begin
+  match x with
+  | foo.bar1 a b   := b
+  | foo.bar2 c d e := e
+  end
+end</juicy-ace-editor><div id='lean-full-code-34' style='display:none'>import data.nat
+open nat
+
+inductive foo : Type :=
+| bar1 : ℕ → ℕ → foo
+| bar2 : ℕ → ℕ → ℕ → foo
+
+example (x : ℕ) (H : x ≠ 0) : succ (pred x) = x :=
+begin
+  revert H,
+  match x with
+  | 0      := by intro H1; exact (absurd rfl H1)
+  | succ y := by intro H1; apply rfl
+  end
+end
+
+definition silly (x : foo) : ℕ :=
+begin
+  match x with
+  | foo.bar1 a b   := b
+  | foo.bar2 c d e := e
+  end
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-34').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgc7ad3ed" class="outline-3">
+<h3 id="orgc7ad3ed"><span class="section-number-3"> 11.5</span> The Rewrite Tactic</h3>
+<div class="outline-text-3" id="text-1-5">
+<p>
+The <code>rewrite</code> tactic provide a basic mechanism for applying
+substitutions to goals and hypotheses, providing a convenient and
+efficient way of working with equality. This tactic is loosely based
+on the rewrite tactic available in the proof language SSReflect.
+</p>
+
+<p>
+The <code>rewrite</code> tactic has many features. The most basic form of the
+tactic is <code>rewrite t</code>, where <code>t</code> is a term which conclusion is an
+equality. In the following example, we use this basic form to rewrite
+the goal using a hypothesis.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-35' mode="ace/mode/lean" readonly="true">open nat
+variables (f : nat → nat) (k : nat)
+
+example (H₁ : f 0 = 0) (H₂ : k = 0) : f k = 0 :=
+begin
+  rewrite H₂, -- replace k with 0
+  rewrite H₁  -- replace f 0 with 0
+end
+</juicy-ace-editor><div id='lean-full-code-35' style='display:none'>open nat
+variables (f : nat → nat) (k : nat)
+
+example (H₁ : f 0 = 0) (H₂ : k = 0) : f k = 0 :=
+begin
+  rewrite H₂, -- replace k with 0
+  rewrite H₁  -- replace f 0 with 0
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-35').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the example above, the first <code>rewrite</code> tactic replaces <code>k</code> with <code>0</code>
+in the goal <code>f k = 0</code>.  Then, the second <code>rewrite</code> replace <code>f 0</code> with
+<code>0</code>. The <code>rewrite</code> tactic automatically closes any goal of
+the form <code>t = t</code>.
+</p>
+
+<p>
+Multiple rewrites can be combined using the notation <code>rewrite [t_1,
+..., t_n]</code>, which is just shorthand for <code>rewrite t_1, ..., rewrite
+t_n</code>.  The previous example can be written as:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-36' mode="ace/mode/lean" readonly="true">open nat
+variables (f : nat → nat) (k : nat)
+
+example (H₁ : f 0 = 0) (H₂ : k = 0) : f k = 0 :=
+begin
+  rewrite [H₂, H₁]
+end
+</juicy-ace-editor><div id='lean-full-code-36' style='display:none'>open nat
+variables (f : nat → nat) (k : nat)
+
+example (H₁ : f 0 = 0) (H₂ : k = 0) : f k = 0 :=
+begin
+  rewrite [H₂, H₁]
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-36').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+By default, the <code>rewrite</code> tactic uses an equation in the forward
+direction, matching the left-hand side with an expression, and
+replacing it with the right-hand side. The notation <code>-t</code> can be used
+to instruct the tactic to use the equality <code>t</code> in the reverse
+direction.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-37' mode="ace/mode/lean" readonly="true">open nat
+variables (f : nat → nat) (a b : nat)
+
+example (H₁ : a = b) (H₂ : f a = 0) : f b = 0 :=
+begin
+  rewrite [-H₁, H₂]
+end
+</juicy-ace-editor><div id='lean-full-code-37' style='display:none'>open nat
+variables (f : nat → nat) (a b : nat)
+
+example (H₁ : a = b) (H₂ : f a = 0) : f b = 0 :=
+begin
+  rewrite [-H₁, H₂]
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-37').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In this example, the term <code>-H₁</code> instructs the <code>rewriter</code> to replace
+<code>b</code> with <code>a</code>.
+</p>
+
+<p>
+The notation <code>*t</code> instructs the rewriter to apply the rewrite <code>t</code> zero
+or more times, while the notation <code>+t</code> instructs the rewriter to use
+it at least once. Note that rewriting with <code>*t</code> never fails.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-38' mode="ace/mode/lean" readonly="true">import data.nat
+open nat algebra
+
+example (x y : nat) : (x + y) * (x + y) = x * x + y * x + x * y + y * y :=
+by rewrite [*left_distrib, *right_distrib, -add.assoc]
+</juicy-ace-editor><div id='lean-full-code-38' style='display:none'>import data.nat
+open nat algebra
+
+example (x y : nat) : (x + y) * (x + y) = x * x + y * x + x * y + y * y :=
+by rewrite [*left_distrib, *right_distrib, -add.assoc]
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-38').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+To avoid non-termination, the <code>rewriter</code> tactic has a limit on the
+maximum number of iterations performed by rewriting steps of the form
+<code>*t</code> and <code>+t</code>. For example, without this limit, the tactic <code>rewrite
+*add.comm</code> would make Lean diverge on any goal that contains a
+sub-term of the form <code>t + s</code> since commutativity would be always
+applicable. The limit can be modified by setting the option
+<code>rewriter.max_iter</code>.
+</p>
+
+<p>
+The notation <code>rewrite n t</code>, where <code>n</code>, is a positive number indicates
+that <code>t</code> must be applied exactly <code>n</code> times. Similarly, <code>rewrite n&gt;t</code>
+is notation for at most <code>n</code> times.
+</p>
+
+<p>
+A pattern <code>p</code> can be optionally provided to a rewriting step <code>t</code> using
+the notation <code>{p}t</code> .  It allows us to specify where the rewrite
+should be applied. This feature is particularly useful for rewrite
+rules such as commutativity <code>a + b = b + a</code> which may be applied to
+many different sub-terms. A pattern may contain placeholders. In the
+following example, the pattern <code>b + _</code> instructs the <code>rewrite</code> tactic
+to apply commutativity to the first term that matches <code>b + _</code>, where
+<code>_</code> can be matched with an arbitrary term.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-39' mode="ace/mode/lean" readonly="true">example (a b c : nat) : a + b + c = a + c + b :=
+begin
+  rewrite [add.assoc, {b + _}add.comm, -add.assoc]
+end</juicy-ace-editor><div id='lean-full-code-39' style='display:none'>import data.nat
+open nat algebra
+example (a b c : nat) : a + b + c = a + c + b :=
+begin
+  rewrite [add.assoc, {b + _}add.comm, -add.assoc]
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-39').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the example above, the first step rewrites <code>a + b + c</code> to <code>a + (b +
+c)</code>.  Then, <code>{b + _}add.comm</code> applies commutativity to the term <code>b +
+c</code>. Without the pattern <code>{b + _}</code>, the tactic would instead rewrite
+<code>a + (b + c)</code> to <code>(b + c) + a</code>.  Finally, <code>-add.assoc</code> applies
+associativity in the "reverse direction" rewriting <code>a + (c + b)</code> to
+<code>a + c + b</code>.
+</p>
+
+<p>
+By default, the tactic affects only the goal. The notation <code>t at H</code>
+applies the rewrite <code>t</code> at hypothesis <code>H</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-40' mode="ace/mode/lean" readonly="true">variables (f : nat → nat) (a : nat)
+
+example (H : a + 0 = 0) : f a = f 0 :=
+begin
+  rewrite [add_zero at H, H]
+end</juicy-ace-editor><div id='lean-full-code-40' style='display:none'>import data.nat
+open nat algebra
+variables (f : nat → nat) (a : nat)
+
+example (H : a + 0 = 0) : f a = f 0 :=
+begin
+  rewrite [add_zero at H, H]
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-40').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The first step, <code>add_zero at H</code>, rewrites the hypothesis <code>(H : a + 0 = 0)</code>
+to <code>a = 0</code>. Then the new hypothesis <code>(H : a = 0)</code> is used to rewrite the
+goal to <code>f 0 = f 0</code>.
+</p>
+
+<p>
+Multiple hypotheses can be specified in the same <code>at</code> clause.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-41' mode="ace/mode/lean" readonly="true">variables (a b : nat)
+
+example (H₁ : a + 0 = 0) (H₂ : b + 0 = 0) : a + b = 0 :=
+begin
+  rewrite add_zero at (H₁, H₂),
+  rewrite [H₁, H₂]
+end</juicy-ace-editor><div id='lean-full-code-41' style='display:none'>import data.nat
+open nat algebra
+variables (a b : nat)
+
+example (H₁ : a + 0 = 0) (H₂ : b + 0 = 0) : a + b = 0 :=
+begin
+  rewrite add_zero at (H₁, H₂),
+  rewrite [H₁, H₂]
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-41').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+You may also use <code>t at *</code> to indicate that all hypotheses and the goal should
+be rewritten using <code>t</code>. The tactic step fails if none of them can be rewritten.
+The notation <code>t at * ⊢</code> applies <code>t</code> to all hypotheses. You can enter
+the symbol <code>⊢</code> by typing <code>\|-</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-42' mode="ace/mode/lean" readonly="true">variables (a b : nat)
+
+example (H₁ : a + 0 = 0) (H₂ : b + 0 = 0) : a + b + 0 = 0 :=
+begin
+  rewrite add_zero at *,
+  rewrite [H₁, H₂]
+end</juicy-ace-editor><div id='lean-full-code-42' style='display:none'>import data.nat
+open nat algebra
+variables (a b : nat)
+
+example (H₁ : a + 0 = 0) (H₂ : b + 0 = 0) : a + b + 0 = 0 :=
+begin
+  rewrite add_zero at *,
+  rewrite [H₁, H₂]
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-42').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The step <code>add_zero at *</code> rewrites the hypotheses <code>H₁</code>, <code>H₂</code> and the main goal
+using the <code>add_zero (x : nat) : x + 0 = x</code>, producing <code>a = 0</code>, <code>b = 0</code> and
+<code>a + b = 0</code> respectively.
+</p>
+
+<p>
+The <code>rewrite</code> tactic is not restricted to propositions. In the
+following example, we use <code>rewrite H at v</code> to rewrite the hypothesis
+<code>v : vector A n</code> to <code>v : vector A 0</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-43' mode="ace/mode/lean" readonly="true">import data.examples.vector
+open nat
+
+variables {A : Type} {n : nat}
+example (H : n = 0) (v : vector A n) : vector A 0 :=
+begin
+  rewrite H at v,
+  exact v
+end
+</juicy-ace-editor><div id='lean-full-code-43' style='display:none'>import data.examples.vector
+open nat
+
+variables {A : Type} {n : nat}
+example (H : n = 0) (v : vector A n) : vector A 0 :=
+begin
+  rewrite H at v,
+  exact v
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-43').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Given a rewrite <code>(t : l = r)</code>, the tactic <code>rewrite t</code> by default
+locates a sub-term <code>s</code> which matches the left-hand-side <code>l</code>, and then
+replaces all occurrences of <code>s</code> with the corresponding
+right-hand-side. The notation <code>at {i_1, ..., i_k}</code> can be used to
+restrict which occurrences of the sub-term <code>s</code> are replaced. For
+example, <code>rewrite t at {1, 3}</code> specifies that only the first and third
+occurrences should be replaced.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-44' mode="ace/mode/lean" readonly="true">variables (f : nat → nat → nat → nat) (a b : nat)
+
+example (H₁ : a = b) (H₂ : f b a b = 0) : f a a a = 0 :=
+by rewrite [H₁ at {1, 3}, H₂]</juicy-ace-editor><div id='lean-full-code-44' style='display:none'>import data.nat
+open nat
+variables (f : nat → nat → nat → nat) (a b : nat)
+
+example (H₁ : a = b) (H₂ : f b a b = 0) : f a a a = 0 :=
+by rewrite [H₁ at {1, 3}, H₂]
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-44').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Similarly, <code>rewrite t at H {1, 3}</code> specifies that <code>t</code> must be applied
+to hypothesis <code>H</code> and only the first and third occurrences must be
+replaced. You can also specify which occurrences should not be
+replaced using the notation <code>rewrite t at -{i_1, ..., i_k}</code>. Here is
+the previous example using this feature.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-45' mode="ace/mode/lean" readonly="true">example (H₁ : a = b) (H₂ : f b a b = 0) : f a a a = 0 :=
+by rewrite [H₁ at -{2}, H₂]</juicy-ace-editor><div id='lean-full-code-45' style='display:none'>import data.nat
+open nat
+
+variables (f : nat → nat → nat → nat) (a b : nat)
+example (H₁ : a = b) (H₂ : f b a b = 0) : f a a a = 0 :=
+by rewrite [H₁ at -{2}, H₂]
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-45').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+So far, we have used theorems and hypotheses as rewriting rules. In
+these cases, the term <code>t</code> is just an identifier.  The notation
+<code>rewrite (t)</code> can be used to provide an arbitrary term <code>t</code> as a
+rewriting rule.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-46' mode="ace/mode/lean" readonly="true">open algebra
+
+variables {A : Type} [s : group A]
+include s
+
+theorem inv_eq_of_mul_eq_one {a b : A} (H : a * b = 1) : a⁻¹ = b :=
+by rewrite [-(mul_one a⁻¹), -H, inv_mul_cancel_left]</juicy-ace-editor><div id='lean-full-code-46' style='display:none'>import algebra.group
+namespace hide
+open algebra
+
+variables {A : Type} [s : group A]
+include s
+
+theorem inv_eq_of_mul_eq_one {a b : A} (H : a * b = 1) : a⁻¹ = b :=
+by rewrite [-(mul_one a⁻¹), -H, inv_mul_cancel_left]
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-46').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the example above, the term <code>mul_one a⁻¹</code> has type <code>a⁻¹ * 1 = a⁻¹</code>.
+Thus, the rewrite step <code>-(mul_one a⁻¹)</code> replaces <code>a⁻¹</code> with <code>a⁻¹ * 1</code>.
+</p>
+
+<p>
+Calculational proofs and the rewrite tactic can be used together.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-47' mode="ace/mode/lean" readonly="true">example (a b c : nat) (H1 : a = b) (H2 : b = c + 1) : a ≠ 0 :=
+calc
+  a     = succ c : by rewrite [H1, H2, add_one]
+    ... ≠ 0      : succ_ne_zero c</juicy-ace-editor><div id='lean-full-code-47' style='display:none'>import data.nat
+open nat
+example (a b c : nat) (H1 : a = b) (H2 : b = c + 1) : a ≠ 0 :=
+calc
+  a     = succ c : by rewrite [H1, H2, add_one]
+    ... ≠ 0      : succ_ne_zero c
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-47').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The <code>rewrite</code> tactic also supports reduction steps: <code>↑f</code>, <code>▸*</code>, <code>↓t</code>,
+and <code>▸t</code>.  The step <code>↑f</code> unfolds <code>f</code> and performs beta/iota reduction
+and simplify projections.  This step fails if there is no <code>f</code> to be
+unfolded. The step <code>▸*</code> is similar to <code>↑f</code>, but does not take a
+constant to unfold as argument, therefore it never fails.  The fold
+step <code>↓t</code> unfolds the head symbol of <code>t</code>, then search for the result
+in the goal (or a given hypothesis), and replaces any match with
+<code>t</code>. Finally, <code>▸t</code> tries to reduce the goal (or a given hypothesis) to
+<code>t</code>, and fails if it is not convertible to <code>t</code>.  (The up arrow is
+entered with <code>\u</code>, the down arrow is entered with <code>\d</code>, and the right
+triangle is entered with <code>\t</code>. You can also use the ASCII alternatives
+<code>^f</code>, <code>&gt;*</code>, <code>&lt;d t</code>, and <code>&gt; t</code> for <code>↑f</code>, <code>▸*</code>, <code>↓t</code>, and <code>▸t</code>,
+respectively.)
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-48' mode="ace/mode/lean" readonly="true">definition double (x : nat) := x + x
+
+variable f : nat → nat
+
+example (x y : nat) (H1 : double x = 0) (H3 : f 0 = 0) : f (x + x) = 0 :=
+by rewrite [↑double at H1, H1, H3]</juicy-ace-editor><div id='lean-full-code-48' style='display:none'>import data.nat
+open nat
+definition double (x : nat) := x + x
+
+variable f : nat → nat
+
+example (x y : nat) (H1 : double x = 0) (H3 : f 0 = 0) : f (x + x) = 0 :=
+by rewrite [↑double at H1, H1, H3]
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-48').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The step <code>↑double at H1</code> unfolds <code>double</code> in the hypothesis <code>H1</code>.
+The notation <code>rewrite ↑[f_1, ..., f_n]</code> is shorthand for
+<code>rewrite [↑f_1, ..., ↑f_n]</code>
+</p>
+
+<p>
+The tactic <code>esimp</code> is a shorthand for <code>rewrite ▸*</code>. Here are two simple examples:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-49' mode="ace/mode/lean" readonly="true">open sigma nat
+
+example (x y : nat) (H : (fun (a : nat), pr1 ⟨a, y⟩) x = 0) : x = 0 :=
+begin
+  esimp at H,
+  exact H
+end
+
+example (x y : nat) (H : x = 0) : (fun (a : nat), pr1 ⟨a, y⟩) x = 0 :=
+begin
+  esimp,
+  exact H
+end
+</juicy-ace-editor><div id='lean-full-code-49' style='display:none'>open sigma nat
+
+example (x y : nat) (H : (fun (a : nat), pr1 ⟨a, y⟩) x = 0) : x = 0 :=
+begin
+  esimp at H,
+  exact H
+end
+
+example (x y : nat) (H : x = 0) : (fun (a : nat), pr1 ⟨a, y⟩) x = 0 :=
+begin
+  esimp,
+  exact H
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-49').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Here is an example where the fold step is used to replace <code>a + 1</code> with <code>f a</code>
+in the main goal.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-50' mode="ace/mode/lean" readonly="true">open nat
+
+definition foo [irreducible] (x : nat) := x + 1
+
+example (a b : nat) (H : foo a = b) : a + 1 = b :=
+begin
+  rewrite ↓foo a,
+  exact H
+end
+</juicy-ace-editor><div id='lean-full-code-50' style='display:none'>open nat
+
+definition foo [irreducible] (x : nat) := x + 1
+
+example (a b : nat) (H : foo a = b) : a + 1 = b :=
+begin
+  rewrite ↓foo a,
+  exact H
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-50').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Here is another example: given any type <code>A</code>, we show that the <code>list A</code>
+append operation <code>s ++ t</code> is associative.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-51' mode="ace/mode/lean" readonly="true">import data.list
+open list
+variable {A : Type}
+
+theorem append_assoc : ∀ (s t u : list A), s ++ t ++ u = s ++ (t ++ u)
+| append_assoc nil t u      := by apply rfl
+| append_assoc (a :: l) t u :=
+  begin
+    rewrite ▸ a :: (l ++ t ++ u) = _,
+    rewrite append_assoc
+  end
+</juicy-ace-editor><div id='lean-full-code-51' style='display:none'>import data.list
+open list
+variable {A : Type}
+
+theorem append_assoc : ∀ (s t u : list A), s ++ t ++ u = s ++ (t ++ u)
+| append_assoc nil t u      := by apply rfl
+| append_assoc (a :: l) t u :=
+  begin
+    rewrite ▸ a :: (l ++ t ++ u) = _,
+    rewrite append_assoc
+  end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-51').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+We discharge the inductive cases using the <code>rewrite</code> tactic. The base
+case is solved by applying reflexivity, because <code>nil ++ t ++ u</code> and
+<code>nil ++ (t ++ u)</code> are definitionally equal. In the inductive step, we
+first reduce the goal <code>a :: s ++ t ++ u = a :: s ++ (t ++ u)</code> to <code>a ::
+(s ++ t ++ u) = a :: s ++ (t ++ u)</code> by applying the reduction step <code>▸
+a :: (l ++ t ++ u) = _</code>.  The idea is to expose the term <code>l ++ t ++
+u</code>, which can be rewritten using the inductive hypothesis
+<code>append_assoc (s t u : list A) : s ++ t ++ u = s ++ (t ++ u)</code>. Notice
+that we used a placeholder <code>_</code> in the right-hand-side of this
+reduction step; this placeholder is unified with the right-hand-side
+of the main goal. As a result, we do not have the copy the right-hand
+side of the goal.
+</p>
+
+<p>
+The <code>rewrite</code> tactic supports type classes. In the following example
+we use theorems from the <code>mul_zero_class</code> and <code>add_monoid</code> classes in
+an example for the <code>comm_ring</code> class. The rewrite is acceptable
+because every <code>comm_ring</code> (commutative ring) is an instance of the
+classes <code>mul_zero_class</code> and <code>add_monoid</code>.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-52' mode="ace/mode/lean" readonly="true">import algebra.ring
+open algebra
+
+example {A : Type} [s : comm_ring A] (a b c : A) : a * 0 + 0 * b + c * 0 + 0 * a = 0 :=
+begin
+  rewrite [+mul_zero, +zero_mul, +add_zero]
+end
+</juicy-ace-editor><div id='lean-full-code-52' style='display:none'>import algebra.ring
+open algebra
+
+example {A : Type} [s : comm_ring A] (a b c : A) : a * 0 + 0 * b + c * 0 + 0 * a = 0 :=
+begin
+  rewrite [+mul_zero, +zero_mul, +add_zero]
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-52').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+There are two variants of <code>rewrite</code>, namely <code>krewrite</code> and <code>xrewrite</code>,
+that are more aggressive about matching patterns. <code>krewrite</code> will
+unfold definitions as long as the head symbol matches, for example,
+when trying to match a pattern <code>f p</code> with an expression <code>f t</code>. In
+contrast, <code>xrewrite</code> will unfold all definitions that are not marked
+irreducible. Both are computationally expensive and should be used
+sparingly. <code>krewrite</code> is often useful when matching patterns requires
+unfolding projections in an algebraic structure.
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,1373 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:45 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theorem Proving in Lean</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]]Jeremy Avigad" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Theorem Proving in Lean</h1>
+
+<div id="outline-container-org93c2abb" class="outline-2">
+<h2 id="org93c2abb"><span class="section-number-2"> 4</span> Quantifiers and Equality</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+The last chapter introduced you to methods that construct proofs of
+statements involving the propositional connectives. In this chapter,
+we extend the repertoire of logical constructions to include the
+universal and existential quantifiers, and the equality relation.
+</p>
+</div>
+
+<div id="outline-container-org48ec258" class="outline-3">
+<h3 id="org48ec258"><span class="section-number-3"> 4.1</span> The Universal Quantifier</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+Notice that if <code>A</code> is any type, we can represent a unary predicate <code>p</code>
+on <code>A</code> as an object of type <code>A → Prop</code>. In that case, given <code>x : A</code>,
+<code>p x</code> denotes the assertion that <code>p</code> holds of <code>x</code>. Similarly, an
+object <code>r : A → A → Prop</code> denotes a binary relation on <code>A</code>: given <code>x
+y : A</code>, <code>r x y</code> denotes the assertion that <code>x</code> is related to <code>y</code>.
+</p>
+
+<p>
+The universal quantifier, <code>∀ x : A, p x</code> is supposed to denote the
+assertion that "for every <code>x : A</code>, <code>p x</code>" holds. As with the
+propositional connectives, in systems of natural deduction, "forall"
+is governed by an introduction and elimination rule. Informally, the
+introduction rule states:
+</p>
+<blockquote>
+<p>
+Given a proof of <code>p x</code>, in a context where <code>x : A</code> is arbitrary, we
+obtain a proof <code>∀ x : A, p x</code>.
+</p>
+</blockquote>
+<p>
+The elimination rule states:
+</p>
+<blockquote>
+<p>
+Given a proof <code>∀ x : A, p x</code> and any term <code>t : A</code>, we obtain a proof of
+<code>p t</code>.
+</p>
+</blockquote>
+<p>
+As was the case for implication, the propositions-as-types
+interpretation now comes into play. Remember the introduction and
+elimination rules for Pi types:
+</p>
+<blockquote>
+<p>
+Given a term <code>t</code> of type <code>B x</code>, in a context where <code>x : A</code> is
+arbitrary, we have <code>(λ x : A, t) : Π x : A, B x</code>.
+</p>
+</blockquote>
+<p>
+The elimination rule states:
+</p>
+<blockquote>
+<p>
+Given a term <code>s : Π x : A, B x</code> and any term <code>t : A</code>, we have <code>s t : B t</code>.
+</p>
+</blockquote>
+<p>
+In the case where <code>p x</code> has type <code>Prop</code>, if we replace <code>Π x : A, B x</code>
+with <code>∀ x : A, p x</code>, we can read these as the correct rules for
+building proofs involving the universal quantifier.
+</p>
+
+<p>
+The Calculus of Inductive Constructions therefore identifies <code>Π</code> and
+<code>∀</code> in this way. If <code>p</code> is any expression, <code>∀ x : A, p</code> is nothing more
+than alternative notation for <code>Π x : A, p</code>, with the idea that the
+former is more natural than the latter in cases where where <code>p</code> is a
+proposition. Typically, the expression <code>p</code> will depend on <code>x :
+A</code>. Recall that, in the case of ordinary function spaces, we could
+interpret <code>A → B</code> as the special case of <code>Π x : A, B</code> in which <code>B</code> does
+not depend on <code>x</code>. Similarly, we can think of an implication <code>p → q</code>
+between propositions as the special case of <code>∀ x : p, q</code> in which the
+expression <code>q</code> does not depend on <code>x</code>.
+</p>
+
+<p>
+Here is an example of how the propositions-as-types correspondence
+gets put into practice.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-1' mode="ace/mode/lean" readonly="true">variables (A : Type) (p q : A → Prop)
+
+example : (∀ x : A, p x ∧ q x) → ∀ y : A, p y  :=
+assume H : ∀ x : A, p x ∧ q x,
+take y : A,
+show p y, from and.elim_left (H y)
+</juicy-ace-editor><div id='lean-full-code-1' style='display:none'>variables (A : Type) (p q : A → Prop)
+
+example : (∀ x : A, p x ∧ q x) → ∀ y : A, p y  :=
+assume H : ∀ x : A, p x ∧ q x,
+take y : A,
+show p y, from and.elim_left (H y)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-1').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+As a notational convention, we give the universal quantifier the
+widest scope possible, so parentheses are needed to limit the
+quantifier over <code>x</code> to the hypothesis in the example above. The
+canonical way to prove <code>∀ y : A, p y</code> is to take an arbitrary <code>y</code>, and
+prove <code>p y</code>. This is the introduction rule. Now, given that <code>H</code> has
+type <code>∀ x : A, p x ∧ q x</code>, the expression <code>H y</code> has type <code>p y ∧ q
+y</code>. This is the elimination rule. Taking the left conjunct gives the
+desired conclusion, <code>p y</code>.
+</p>
+
+<p>
+Remember that expressions which differ up to renaming of bound
+variables are considered to be equivalent. So, for example, we could
+have used the same variable, <code>x</code>, in both the hypothesis and
+conclusion, or chosen the variable <code>z</code> instead of <code>y</code> in the proof:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-2' mode="ace/mode/lean" readonly="true">example : (∀ x : A, p x ∧ q x) → ∀ y : A, p y  :=
+assume H : ∀ x : A, p x ∧ q x,
+take z : A,
+show p z, from and.elim_left (H z)</juicy-ace-editor><div id='lean-full-code-2' style='display:none'>variables (A : Type) (p q : A → Prop)
+
+example : (∀ x : A, p x ∧ q x) → ∀ y : A, p y  :=
+assume H : ∀ x : A, p x ∧ q x,
+take z : A,
+show p z, from and.elim_left (H z)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-2').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+As another example, here is how we can express the fact that a
+relation, <code>r</code>, is transitive:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-3' mode="ace/mode/lean" readonly="true">variables (A : Type) (r : A → A → Prop)
+variable trans_r : ∀ x y z, r x y → r y z → r x z
+
+variables (a b c : A)
+variables (Hab : r a b) (Hbc : r b c)
+
+check trans_r          -- ∀ (x y z : A), r x y → r y z → r x z
+check trans_r a b c
+check trans_r a b c Hab
+check trans_r a b c Hab Hbc
+</juicy-ace-editor><div id='lean-full-code-3' style='display:none'>variables (A : Type) (r : A → A → Prop)
+variable trans_r : ∀ x y z, r x y → r y z → r x z
+
+variables (a b c : A)
+variables (Hab : r a b) (Hbc : r b c)
+
+check trans_r          -- ∀ (x y z : A), r x y → r y z → r x z
+check trans_r a b c
+check trans_r a b c Hab
+check trans_r a b c Hab Hbc
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-3').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Think about what is going on here. When we instantiate <code>trans_r</code> at
+the values <code>a b c</code>, we end up with a proof of <code>r a b → r b c → r a
+c</code>. Applying this to the "hypothesis" <code>Hab : r a b</code>, we get a proof of
+the implication <code>r b c → r a c</code>. Finally, applying it to the
+hypothesis <code>Hbc</code> yields a proof of the conclusion <code>r a c</code>.
+</p>
+
+<p>
+In situations like this, it can be tedious to supply the arguments <code>a
+b c</code>, when they can be inferred from <code>Hab Hbc</code>. For that reason, it is
+common to make these arguments implicit:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-4' mode="ace/mode/lean" readonly="true">variables (A : Type) (r : A → A → Prop)
+variable (trans_r : ∀ {x y z}, r x y → r y z → r x z)
+
+variables (a b c : A)
+variables (Hab : r a b) (Hbc : r b c)
+
+check trans_r
+check trans_r Hab
+check trans_r Hab Hbc
+</juicy-ace-editor><div id='lean-full-code-4' style='display:none'>variables (A : Type) (r : A → A → Prop)
+variable (trans_r : ∀ {x y z}, r x y → r y z → r x z)
+
+variables (a b c : A)
+variables (Hab : r a b) (Hbc : r b c)
+
+check trans_r
+check trans_r Hab
+check trans_r Hab Hbc
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-4').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The advantage is that we can simply write <code>trans_r Hab Hbc</code> as a proof
+of <code>r a c</code>. The disadvantage is that Lean does not have enough
+information to infer the types of the arguments in the expressions
+<code>trans_r</code> and <code>trans_r Hab</code>. The output of the <code>check</code> command
+contains expressions like <code>?z A r trans_r a b c Hab Hbc</code>. Such an
+expression indicates an arbitrary value, that may depend on any of the
+values listed (in this case, all the variables in the local context).
+</p>
+
+<p>
+Here is an example of how we can carry out elementary reasoning with
+an equivalence relation:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-5' mode="ace/mode/lean" readonly="true">variables (A : Type) (r : A → A → Prop)
+
+variable refl_r : ∀ x, r x x
+variable symm_r : ∀ {x y}, r x y → r y x
+variable trans_r : ∀ {x y z}, r x y → r y z → r x z
+
+example (a b c d : A) (Hab : r a b) (Hcb : r c b) (Hcd : r c d) : r a d :=
+trans_r (trans_r Hab (symm_r Hcb)) Hcd
+</juicy-ace-editor><div id='lean-full-code-5' style='display:none'>variables (A : Type) (r : A → A → Prop)
+
+variable refl_r : ∀ x, r x x
+variable symm_r : ∀ {x y}, r x y → r y x
+variable trans_r : ∀ {x y z}, r x y → r y z → r x z
+
+example (a b c d : A) (Hab : r a b) (Hcb : r c b) (Hcd : r c d) : r a d :=
+trans_r (trans_r Hab (symm_r Hcb)) Hcd
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-5').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+You might want to try to prove some of these equivalences:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-6' mode="ace/mode/lean" readonly="true">variables (A : Type) (p q : A → Prop)
+
+example : (∀ x, p x ∧ q x) ↔ (∀ x, p x) ∧ (∀ x, q x) := sorry
+example : (∀ x, p x → q x) → (∀ x, p x) → (∀ x, q x) := sorry
+example : (∀ x, p x) ∨ (∀ x, q x) → ∀ x, p x ∨ q x := sorry
+</juicy-ace-editor><div id='lean-full-code-6' style='display:none'>variables (A : Type) (p q : A → Prop)
+
+example : (∀ x, p x ∧ q x) ↔ (∀ x, p x) ∧ (∀ x, q x) := sorry
+example : (∀ x, p x → q x) → (∀ x, p x) → (∀ x, q x) := sorry
+example : (∀ x, p x) ∨ (∀ x, q x) → ∀ x, p x ∨ q x := sorry
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-6').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+You should also try to understand why the reverse implication is not
+derivable in the last example.
+</p>
+
+<p>
+It is often possible to bring a component outside a universal
+quantifier, when it does not depend on the quantified variable (one
+direction of the second of these requires classical logic):
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-7' mode="ace/mode/lean" readonly="true">variables (A : Type) (p q : A → Prop)
+variable r : Prop
+
+example : A → ((∀ x : A, r) ↔ r) := sorry
+example : (∀ x, p x ∨ r) ↔ (∀ x, p x) ∨ r := sorry
+example : (∀ x, r → p x) ↔ (r → ∀ x, p x) := sorry
+</juicy-ace-editor><div id='lean-full-code-7' style='display:none'>variables (A : Type) (p q : A → Prop)
+variable r : Prop
+
+example : A → ((∀ x : A, r) ↔ r) := sorry
+example : (∀ x, p x ∨ r) ↔ (∀ x, p x) ∨ r := sorry
+example : (∀ x, r → p x) ↔ (r → ∀ x, p x) := sorry
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-7').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+As a final example, consider the "barber paradox", that is, the claim
+that in a certain town there is a (male) barber that shaves all and only the
+men who do not shave themselves. Prove that this implies a
+contradiction:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-8' mode="ace/mode/lean" readonly="true">variables (men : Type) (barber : men) (shaves : men → men → Prop)
+
+example (H : ∀ x : men, shaves barber x ↔ ¬shaves x x) : false := sorry
+</juicy-ace-editor><div id='lean-full-code-8' style='display:none'>variables (men : Type) (barber : men) (shaves : men → men → Prop)
+
+example (H : ∀ x : men, shaves barber x ↔ ¬shaves x x) : false := sorry
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-8').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+It is the typing rule for Pi types, and the universal quantifier in
+particular, that distinguishes <code>Prop</code> from other types. Suppose we
+have <code>A : Type.{i}</code> and <code>B : Type.{j}</code>, where the expression <code>B</code> may
+depend on a variable <code>x : A</code>. Then <code>Π x : A, B</code> is an element of
+<code>Type.{imax i j}</code>, where <code>imax i j</code> is the maximum of <code>i</code> and <code>j</code> if
+<code>j</code> is not 0, and 0 otherwise.
+</p>
+
+<p>
+The idea is as follows. If <code>j</code> is not <code>0</code>, then <code>Π x : A, B</code> is an
+element of <code>Type.{max i j}</code>. In other words, the type of dependent
+functions from <code>A</code> to <code>B</code> "lives" in the universe with smallest index
+greater-than or equal to the indices of the universes of <code>A</code> and
+<code>B</code>. Suppose, however, that <code>B</code> is of <code>Type.{0}</code>, that is, an element
+of <code>Prop</code>. In that case, <code>Π x : A, B</code> is an element of <code>Type.{0}</code> as
+well, no matter which type universe <code>A</code> lives in. In other words, if
+<code>B</code> is a proposition depending on <code>A</code>, then <code>∀ x : A, B</code> is again a
+proposition. This reflects the interpretation of <code>Prop</code> as the type of
+propositions rather than data, and it is what makes <code>Prop</code>
+<i>impredicative</i>. In contrast to the standard kernel, such a <code>Prop</code> is
+absent from Lean's kernel for homotopy type theory.
+</p>
+
+<p>
+The term "predicative" stems from foundational developments around the
+turn of the twentieth century, when logicians such as Poincaré and
+Russell blamed set-theoretic paradoxes on the "vicious circles" that
+arise when we define a property by quantifying over a collection that
+includes the very property being defined. Notice that if <code>A</code> is any
+type, we can form the type <code>A → Prop</code> of all predicates on <code>A</code> (the
+"power type of <code>A</code>"). The impredicativity of Prop means that we can
+form propositions that quantify over <code>A → Prop</code>. In particular, we can
+define predicates on <code>A</code> by quantifying over all predicates on <code>A</code>,
+which is exactly the type of circularity that was once considered
+problematic.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgdb90ac0" class="outline-3">
+<h3 id="orgdb90ac0"><span class="section-number-3"> 4.2</span> Equality</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+Let us now turn to one of the most fundamental relations defined in
+Lean's library, namely, the equality relation. In Chapter
+<a href="#" onclick="myModule.loadTutorial('06_Inductive_Types.html', 'Inductive_Types')">Inductive Types</a>, we
+will explain <i>how</i> equality is defined, from the primitives of Lean's
+logical framework. In the meanwhile, here we explain how to use it.
+</p>
+
+<p>
+Of course, a fundamental property of equality is that it is an
+equivalence relation:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-9' mode="ace/mode/lean" readonly="true">check eq.refl    -- ∀ (a : ?A), a = a
+check eq.symm    -- ?a = ?b → ?b = ?a
+check eq.trans   -- ?a = ?b → ?b = ?c → ?a = ?c
+</juicy-ace-editor><div id='lean-full-code-9' style='display:none'>check eq.refl    -- ∀ (a : ?A), a = a
+check eq.symm    -- ?a = ?b → ?b = ?a
+check eq.trans   -- ?a = ?b → ?b = ?c → ?a = ?c
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-9').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Thus, for example, we can specialize the example from the previous section
+to the equality relation:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-10' mode="ace/mode/lean" readonly="true">variables (A : Type) (a b c d : A)
+premises (Hab : a = b) (Hcb : c = b) (Hcd : c = d)
+
+example : a = d :=
+eq.trans (eq.trans Hab (eq.symm Hcb)) Hcd
+</juicy-ace-editor><div id='lean-full-code-10' style='display:none'>variables (A : Type) (a b c d : A)
+premises (Hab : a = b) (Hcb : c = b) (Hcd : c = d)
+
+example : a = d :=
+eq.trans (eq.trans Hab (eq.symm Hcb)) Hcd
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-10').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+If we "open" the eq namespace, the names become shorter:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-11' mode="ace/mode/lean" readonly="true">open eq
+
+example : a = d := trans (trans Hab (symm Hcb)) Hcd</juicy-ace-editor><div id='lean-full-code-11' style='display:none'>variables (A : Type) (a b c d : A)
+premises (Hab : a = b) (Hcb : c = b) (Hcd : c = d)
+
+open eq
+
+example : a = d := trans (trans Hab (symm Hcb)) Hcd
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-11').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Lean even defines convenient notation for writing proofs like this:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-12' mode="ace/mode/lean" readonly="true">variables (A : Type) (a b c d : A)
+premises (Hab : a = b) (Hcb : c = b) (Hcd : c = d)
+
+-- BEGIN
+open eq.ops
+
+example : a = d := Hab ⬝ Hcb⁻¹ ⬝ Hcd
+</juicy-ace-editor><div id='lean-full-code-12' style='display:none'>variables (A : Type) (a b c d : A)
+premises (Hab : a = b) (Hcb : c = b) (Hcd : c = d)
+
+open eq.ops
+
+example : a = d := Hab ⬝ Hcb⁻¹ ⬝ Hcd
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-12').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+You can use <code>\tr</code> to enter the transitivity dot, and <code>\sy</code> to enter
+the inverse/symmetry symbol.
+</p>
+
+<p>
+Reflexivity is more powerful than it looks. Recall that terms in the
+Calculus of Inductive Constructions have a computational
+interpretation, and that the logical framework treats terms with a
+common reduct as the same. As a result, some nontrivial identities can
+be proved by reflexivity:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-13' mode="ace/mode/lean" readonly="true">import data.nat data.prod
+open nat prod
+
+variables (A B : Type)
+
+example (f : A → B) (a : A) : (λ x, f x) a = f a := eq.refl _
+example (a : A) (b : A) : pr1 (a, b) = a := eq.refl _
+example : 2 + 3 = (5 : ℕ) := eq.refl _
+</juicy-ace-editor><div id='lean-full-code-13' style='display:none'>import data.nat data.prod
+open nat prod
+
+variables (A B : Type)
+
+example (f : A → B) (a : A) : (λ x, f x) a = f a := eq.refl _
+example (a : A) (b : A) : pr1 (a, b) = a := eq.refl _
+example : 2 + 3 = (5 : ℕ) := eq.refl _
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-13').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+This feature of the framework is so important that the library defines
+a notation <code>rfl</code> for <code>eq.refl _</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-14' mode="ace/mode/lean" readonly="true">example (f : A → B) (a : A) : (λ x, f x) a = f a := rfl
+example (a : A) (b : A) : pr1 (a, b) = a := rfl
+example : 2 + 3 = (5 : ℕ) := rfl</juicy-ace-editor><div id='lean-full-code-14' style='display:none'>import data.nat data.prod
+open nat prod
+
+variables (A B : Type)
+
+example (f : A → B) (a : A) : (λ x, f x) a = f a := rfl
+example (a : A) (b : A) : pr1 (a, b) = a := rfl
+example : 2 + 3 = (5 : ℕ) := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-14').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Equality is much more than an equivalence relation, however. It has
+the important property that every assertion respects the equivalence,
+in the sense that we can substitute equal expressions without changing
+the truth value. That is, given <code>H1 : a = b</code> and <code>H2 : P a</code>, we can construct
+a proof for <code>P b</code> using substitution: <code>eq.subst H1 H2</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-15' mode="ace/mode/lean" readonly="true">example (A : Type) (a b : A) (P : A → Prop) (H1 : a = b) (H2 : P a) : P b :=
+eq.subst H1 H2
+
+example (A : Type) (a b : A) (P : A → Prop) (H1 : a = b) (H2 : P a) : P b :=
+H1 ▸ H2</juicy-ace-editor><div id='lean-full-code-15' style='display:none'>open eq.ops
+example (A : Type) (a b : A) (P : A → Prop) (H1 : a = b) (H2 : P a) : P b :=
+eq.subst H1 H2
+
+example (A : Type) (a b : A) (P : A → Prop) (H1 : a = b) (H2 : P a) : P b :=
+H1 ▸ H2
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-15').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The triangle in the second presentation is, once again, made available
+by opening <code>eq.ops</code>, and you can use <code>\t</code> to enter it. The term
+<code>H1 ▸ H2</code> is just notation for <code>eq.subst H1 H2</code>. This notation is used
+extensively in the Lean standard library.
+</p>
+
+<p>
+Here is an example of a calculation in the natural numbers that uses
+substitution combined with associativity, commutativity, and
+distributivity of the natural numbers. Of course, carrying out such
+calculations require being able to invoke such supporting
+theorems. You can find a number of identities involving the natural
+numbers in the associated library files, for example, in the module
+<a target='_blank' href="https://github.com/leanprover/lean/blob/master/library/data/nat/basic.lean">data.nat.basic</a>. In the next chapter, we will have more to say about
+how to find theorems in Lean's library.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-16' mode="ace/mode/lean" readonly="true">import data.nat
+open nat eq.ops algebra
+
+example (x y : ℕ) : (x + y) * (x + y) = x * x + y * x + x * y + y * y :=
+have H1 : (x + y) * (x + y) = (x + y) * x + (x + y) * y, from !left_distrib,
+have H2 : (x + y) * (x + y) = x * x + y * x + (x * y + y * y),
+  from (right_distrib x y x) ▸ !right_distrib ▸ H1,
+!add.assoc⁻¹ ▸ H2
+</juicy-ace-editor><div id='lean-full-code-16' style='display:none'>import data.nat
+open nat eq.ops algebra
+
+example (x y : ℕ) : (x + y) * (x + y) = x * x + y * x + x * y + y * y :=
+have H1 : (x + y) * (x + y) = (x + y) * x + (x + y) * y, from !left_distrib,
+have H2 : (x + y) * (x + y) = x * x + y * x + (x * y + y * y),
+  from (right_distrib x y x) ▸ !right_distrib ▸ H1,
+!add.assoc⁻¹ ▸ H2
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-16').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The exclamation mark infers explicit arguments to a theorem from the context.
+For more information, see Section <a href="#" onclick="myModule.loadTutorial('08_Building_Theories_and_Proofs.html', 'More_on_Implicit_Arguments')">More on Implicit Arguments</a>.
+In the statement of the example, remember that addition
+implicitly associates to the left, so the last step of the proof
+puts the right-hand side of <code>H2</code> in the required form.
+</p>
+
+<p>
+It is often important to be able to carry out substitutions like this
+by hand, but it is tedious to prove examples like the one above in
+this way. Fortunately, Lean provides an environment that provides
+better support for such calculations, which we will turn to now.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgc0a847a" class="outline-3">
+<h3 id="orgc0a847a"><span class="section-number-3"> 4.3</span> The Calculation Environment</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+A calculational proof is just a chain of intermediate results that are
+meant to be composed by basic principles such as the transitivity of
+equality. In Lean, a calculation proof starts with the keyword <code>calc</code>,
+and has the following syntax:
+</p>
+<div class="org-src-container">
+
+<pre class="src src-text">calc
+  &lt;expr&gt;_0  'op_1'  &lt;expr&gt;_1  ':'  &lt;proof&gt;_1
+    '...'   'op_2'  &lt;expr&gt;_2  ':'  &lt;proof&gt;_2
+     ...
+    '...'   'op_n'  &lt;expr&gt;_n  ':'  &lt;proof&gt;_n
+</pre>
+</div>
+<p>
+Each <code>&lt;proof&gt;_i</code> is a proof for <code>&lt;expr&gt;_{i-1} op_i &lt;expr&gt;_i</code>. The
+<code>&lt;proof&gt;_i</code> may also be of the form <code>{ &lt;pr&gt; }</code>, where <code>&lt;pr&gt;</code> is a
+proof for some equality <code>a = b</code>. The form <code>{ &lt;pr&gt; }</code> is just syntactic
+sugar for <code>eq.subst &lt;pr&gt; (eq.refl &lt;expr&gt;_{i-1})</code> In other words, we are
+claiming we can obtain <code>&lt;expr&gt;_i</code> by replacing <code>a</code> with <code>b</code> in
+<code>&lt;expr&gt;_{i-1}</code>.
+</p>
+
+<p>
+Here is an example:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-18' mode="ace/mode/lean" readonly="true">import data.nat
+open nat algebra
+
+variables (a b c d e : nat)
+variable H1 : a = b
+variable H2 : b = c + 1
+variable H3 : c = d
+variable H4 : e = 1 + d
+
+theorem T : a = e :=
+calc
+  a     = b      : H1
+    ... = c + 1  : H2
+    ... = d + 1  : {H3}
+    ... = 1 + d  : add.comm d 1
+    ... =  e     : eq.symm H4
+</juicy-ace-editor><div id='lean-full-code-18' style='display:none'>import data.nat
+open nat algebra
+
+variables (a b c d e : nat)
+variable H1 : a = b
+variable H2 : b = c + 1
+variable H3 : c = d
+variable H4 : e = 1 + d
+
+theorem T : a = e :=
+calc
+  a     = b      : H1
+    ... = c + 1  : H2
+    ... = d + 1  : {H3}
+    ... = 1 + d  : add.comm d 1
+    ... =  e     : eq.symm H4
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-18').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The <code>calc</code> command can be configured for any relation that supports
+some form of transitivity. It can even combine different relations.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-19' mode="ace/mode/lean" readonly="true">import data.nat
+open nat algebra
+
+theorem T2 (a b c : nat) (H1 : a = b) (H2 : b = c + 1) : a ≠ 0 :=
+calc
+  a     = b      : H1
+    ... = c + 1  : H2
+    ... = succ c : add_one c
+    ... ≠ 0      : succ_ne_zero c
+</juicy-ace-editor><div id='lean-full-code-19' style='display:none'>import data.nat
+open nat algebra
+
+theorem T2 (a b c : nat) (H1 : a = b) (H2 : b = c + 1) : a ≠ 0 :=
+calc
+  a     = b      : H1
+    ... = c + 1  : H2
+    ... = succ c : add_one c
+    ... ≠ 0      : succ_ne_zero c
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-19').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Lean offers some nice additional features. If the justification for a
+line of a calculational proof is <code>foo</code>, Lean will try adding implicit
+arguments if <code>foo</code> alone fails to do the job. If that doesn't work,
+Lean will try the symmetric version, <code>foo⁻¹</code>, again adding arguments
+if necessary. If that doesn't work, Lean proceeds to try <code>{foo}</code> and
+<code>{foo⁻¹}</code>, again, adding arguments if necessary. This can simplify the
+presentation of a <code>calc</code> proof considerably. Consider, for example,
+the following proof of the identity in the last section:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-20' mode="ace/mode/lean" readonly="true">example (x y : ℕ) : (x + y) * (x + y) = x * x + y * x + x * y + y * y :=
+calc
+  (x + y) * (x + y) = (x + y) * x + (x + y) * y  : left_distrib
+    ... = x * x + y * x + (x + y) * y            : right_distrib
+    ... = x * x + y * x + (x * y + y * y)        : right_distrib
+    ... = x * x + y * x + x * y + y * y          : add.assoc</juicy-ace-editor><div id='lean-full-code-20' style='display:none'>import data.nat
+open nat algebra
+
+example (x y : ℕ) : (x + y) * (x + y) = x * x + y * x + x * y + y * y :=
+calc
+  (x + y) * (x + y) = (x + y) * x + (x + y) * y  : left_distrib
+    ... = x * x + y * x + (x + y) * y            : right_distrib
+    ... = x * x + y * x + (x * y + y * y)        : right_distrib
+    ... = x * x + y * x + x * y + y * y          : add.assoc
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-20').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+As an exercise, we suggest carrying out a similar expansion of <code>(x -
+y) * (x + y)</code>, using in the appropriate order the theorems
+<code>left_distrib</code>, <code>mul.comm</code> and <code>add.comm</code> and the theorems
+<code>mul_sub_right_distrib</code> and <code>add_sub_add_left</code> in the file
+<a target='_blank' href="https://github.com/leanprover/lean/blob/master/library/data/nat/sub.lean">data.nat.sub</a>. Note that this exercise is slightly more involved than
+the previous example, because the subtraction on natural numbers is
+truncated, so that <code>n - m</code> is equal to <code>0</code> when <code>m</code> is greater than or
+equal to <code>n</code>.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org501bf27" class="outline-3">
+<h3 id="org501bf27"><span class="section-number-3"> 4.4</span> The Simplifier</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+[TO DO: this section needs to be written. Emphasize that the
+simplifier can be used in conjunction with calc.]
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgd2c987b" class="outline-3">
+<h3 id="orgd2c987b"><span class="section-number-3"> 4.5</span> The Existential Quantifier</h3>
+<div class="outline-text-3" id="text-1-5">
+<p>
+Finally, consider the existential quantifier, which can be written as
+either <code>exists x : A, p x</code> or <code>∃ x : A, p x</code>. Both versions are
+actually notationally convenient abbreviations for a more long-winded
+expression, <code>Exists (λ x : A, p x)</code>, defined in Lean's library.
+</p>
+
+<p>
+As you should by now expect, the library includes both an introduction
+rule and an elimination rule. The introduction rule is
+straightforward: to prove <code>∃ x : A, p x</code>, it suffices to provide a
+suitable term <code>t</code> and a proof of <code>p t</code>. Here are some examples:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-21' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+example : ∃ x : ℕ, x &gt; 0 :=
+have H : 1 &gt; 0, from succ_pos 0,
+exists.intro 1 H
+
+example (x : ℕ) (H : x &gt; 0) : ∃ y, y &lt; x :=
+exists.intro 0 H
+
+example (x y z : ℕ) (Hxy : x &lt; y) (Hyz : y &lt; z) : ∃ w, x &lt; w ∧ w &lt; z :=
+exists.intro y (and.intro Hxy Hyz)
+
+check @exists.intro
+</juicy-ace-editor><div id='lean-full-code-21' style='display:none'>import data.nat
+open nat
+
+example : ∃ x : ℕ, x &gt; 0 :=
+have H : 1 &gt; 0, from succ_pos 0,
+exists.intro 1 H
+
+example (x : ℕ) (H : x &gt; 0) : ∃ y, y &lt; x :=
+exists.intro 0 H
+
+example (x y z : ℕ) (Hxy : x &lt; y) (Hyz : y &lt; z) : ∃ w, x &lt; w ∧ w &lt; z :=
+exists.intro y (and.intro Hxy Hyz)
+
+check @exists.intro
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-21').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Note that <code>exists.intro</code> has implicit arguments: Lean has to infer the
+predicate <code>p : A → Prop</code> in the conclusion <code>∃ x, p x</code>. This is not a
+trivial affair. For example, if we have have <code>Hg : g 0 0 = 0</code> and
+write <code>exists.intro 0 Hg</code>, there are many possible values for the
+predicate <code>p</code>, corresponding to the theorems <code>∃ x, g x x = x</code>, <code>∃ x, g
+x x = 0</code>, <code>∃ x, g x 0 = x</code>, etc. Lean uses the context to infer which
+one is appropriate. This is illustrated in the following example, in
+which we set the option <code>pp.implicit</code> to true to ask Lean's
+pretty-printer to show the implicit arguments.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-22' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+variable g : ℕ → ℕ → ℕ
+variable Hg : g 0 0 = 0
+
+theorem gex1 : ∃ x, g x x = x := exists.intro 0 Hg
+theorem gex2 : ∃ x, g x 0 = x := exists.intro 0 Hg
+theorem gex3 : ∃ x, g 0 0 = x := exists.intro 0 Hg
+theorem gex4 : ∃ x, g x x = 0 := exists.intro 0 Hg
+
+set_option pp.implicit true  -- display implicit arguments
+check gex1
+check gex2
+check gex3
+check gex4
+</juicy-ace-editor><div id='lean-full-code-22' style='display:none'>import data.nat
+open nat
+
+variable g : ℕ → ℕ → ℕ
+variable Hg : g 0 0 = 0
+
+theorem gex1 : ∃ x, g x x = x := exists.intro 0 Hg
+theorem gex2 : ∃ x, g x 0 = x := exists.intro 0 Hg
+theorem gex3 : ∃ x, g 0 0 = x := exists.intro 0 Hg
+theorem gex4 : ∃ x, g x x = 0 := exists.intro 0 Hg
+
+set_option pp.implicit true  -- display implicit arguments
+check gex1
+check gex2
+check gex3
+check gex4
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-22').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+We can view <code>exists.intro</code> as an information-hiding operation: we are
+"hiding" the witness to the body of the assertion. The existential
+elimination rule, <code>exists.elim</code>, performs the opposite operation. It
+allows us to prove a proposition <code>q</code> from <code>∃ x : A, p x</code>, by showing
+that <code>q</code> follows from <code>p w</code> for an arbitrary value <code>w</code>. Roughly
+speaking, since we know there is an <code>x</code> satisfying <code>p x</code>, we can give
+it a name, say, <code>w</code>. If <code>q</code> does not mention <code>w</code>, then showing that
+<code>q</code> follows from <code>p w</code> is tantamount to showing the <code>q</code> follows from
+the existence of any such <code>x</code>. It may be helpful to compare the
+exists-elimination rule to the or-elimination rule: the assertion <code>∃
+x : A, p x</code> can be thought of as a big disjunction of the propositions
+<code>p a</code>, as <code>a</code> ranges over all the elements of <code>A</code>.
+</p>
+
+<p>
+Notice that exists introduction and elimination are very similar to the
+sigma introduction <code>sigma.mk</code> and elimination.
+The difference is that given <code>a : A</code> and <code>h : p a</code>, <code>exists.intro a h</code>
+has type <code>(∃ x : A, p x) : Prop</code> and <code>sigma.mk a h</code> has type
+<code>(Σ x : A, p x) : Type</code>. The similarity
+between <code>∃</code> and <code>Σ</code> is another instance of the Curry-Howard isomorphism.
+</p>
+
+<p>
+In the following example, we define <code>even a</code> as <code>∃ b, a = 2*b</code>, and
+then we show that the sum of two even numbers is an even number.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-23' mode="ace/mode/lean" readonly="true">import data.nat
+open nat algebra
+
+definition is_even (a : nat) := ∃ b, a = 2*b
+
+theorem even_plus_even {a b : nat} (H1 : is_even a) (H2 : is_even b) : is_even (a + b) :=
+exists.elim H1 (fun (w1 : nat) (Hw1 : a = 2*w1),
+exists.elim H2 (fun (w2 : nat) (Hw2 : b = 2*w2),
+  exists.intro (w1 + w2)
+    (calc
+      a + b = 2*w1 + b      : Hw1
+        ... = 2*w1 + 2*w2   : Hw2
+        ... = 2*(w1 + w2)   : left_distrib)))
+</juicy-ace-editor><div id='lean-full-code-23' style='display:none'>import data.nat
+open nat algebra
+
+definition is_even (a : nat) := ∃ b, a = 2*b
+
+theorem even_plus_even {a b : nat} (H1 : is_even a) (H2 : is_even b) : is_even (a + b) :=
+exists.elim H1 (fun (w1 : nat) (Hw1 : a = 2*w1),
+exists.elim H2 (fun (w2 : nat) (Hw2 : b = 2*w2),
+  exists.intro (w1 + w2)
+    (calc
+      a + b = 2*w1 + b      : Hw1
+        ... = 2*w1 + 2*w2   : Hw2
+        ... = 2*(w1 + w2)   : left_distrib)))
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-23').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Lean provides syntactic sugar for <code>exists.elim</code>. The expression
+</p>
+<div class="org-src-container">
+
+<pre class="src src-text">obtain &lt;var1&gt; &lt;var2&gt;, from &lt;expr1&gt;,
+&lt;expr2&gt;
+</pre>
+</div>
+<p>
+translates to <code>exists.elim &lt;expr1&gt; (λ &lt;var1&gt; &lt;var2&gt;, &lt;expr2&gt;)</code>. With
+this syntax, the example above can be presented in a more natural way:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-25' mode="ace/mode/lean" readonly="true">theorem even_plus_even {a b : nat} (H1 : is_even a) (H2 : is_even b) :
+  is_even (a + b) :=
+obtain (w1 : nat) (Hw1 : a = 2*w1), from H1,
+obtain (w2 : nat) (Hw2 : b = 2*w2), from H2,
+exists.intro (w1 + w2)
+  (calc
+    a + b = 2*w1 + b      : Hw1
+      ... = 2*w1 + 2*w2   : Hw2
+      ... = 2*(w1 + w2)   : left_distrib)</juicy-ace-editor><div id='lean-full-code-25' style='display:none'>import data.nat
+open nat algebra
+
+definition is_even (a : nat) := ∃ b, a = 2*b
+
+theorem even_plus_even {a b : nat} (H1 : is_even a) (H2 : is_even b) :
+  is_even (a + b) :=
+obtain (w1 : nat) (Hw1 : a = 2*w1), from H1,
+obtain (w2 : nat) (Hw2 : b = 2*w2), from H2,
+exists.intro (w1 + w2)
+  (calc
+    a + b = 2*w1 + b      : Hw1
+      ... = 2*w1 + 2*w2   : Hw2
+      ... = 2*(w1 + w2)   : left_distrib)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-25').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Just as the constructive "or" is stronger than the classical "or," so,
+too, is the constructive "exists" stronger than the classical
+"exists". For example, the following implication requires classical
+reasoning because, from a constructive standpoint, knowing that it is
+not the case that every <code>x</code> satisfies <code>¬ p</code> is not the same as having
+a particular <code>x</code> that satisfies <code>p</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-26' mode="ace/mode/lean" readonly="true">open classical
+
+variables (A : Type) (p : A → Prop)
+
+example (H : ¬ ∀ x, ¬ p x) : ∃ x, p x :=
+by_contradiction
+  (assume H1 : ¬ ∃ x, p x,
+    have H2 : ∀ x, ¬ p x, from
+      take x,
+      assume H3 : p x,
+      have H4 : ∃ x, p x, from exists.intro x H3,
+      show false, from H1 H4,
+    show false, from H H2)
+</juicy-ace-editor><div id='lean-full-code-26' style='display:none'>open classical
+
+variables (A : Type) (p : A → Prop)
+
+example (H : ¬ ∀ x, ¬ p x) : ∃ x, p x :=
+by_contradiction
+  (assume H1 : ¬ ∃ x, p x,
+    have H2 : ∀ x, ¬ p x, from
+      take x,
+      assume H3 : p x,
+      have H4 : ∃ x, p x, from exists.intro x H3,
+      show false, from H1 H4,
+    show false, from H H2)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-26').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+What follows are some common identities involving the existential
+quantifier. We encourage you to prove as many as you can. We are also
+leaving it to you to determine which are nonconstructive, and hence
+require some form of classical reasoning.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-27' mode="ace/mode/lean" readonly="true">open classical
+
+variables (A : Type) (p q : A → Prop)
+variable a : A
+variable r : Prop
+
+example : (∃ x : A, r) → r := sorry
+example : r → (∃ x : A, r) := sorry
+example : (∃ x, p x ∧ r) ↔ (∃ x, p x) ∧ r := sorry
+example : (∃ x, p x ∨ q x) ↔ (∃ x, p x) ∨ (∃ x, q x) := sorry
+
+example : (∀ x, p x) ↔ ¬ (∃ x, ¬ p x) := sorry
+example : (∃ x, p x) ↔ ¬ (∀ x, ¬ p x) := sorry
+example : (¬ ∃ x, p x) ↔ (∀ x, ¬ p x) := sorry
+example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := sorry
+
+example : (∀ x, p x → r) ↔ (∃ x, p x) → r := sorry
+example : (∃ x, p x → r) ↔ (∀ x, p x) → r := sorry
+example : (∃ x, r → p x) ↔ (r → ∃ x, p x) := sorry
+</juicy-ace-editor><div id='lean-full-code-27' style='display:none'>open classical
+
+variables (A : Type) (p q : A → Prop)
+variable a : A
+variable r : Prop
+
+example : (∃ x : A, r) → r := sorry
+example : r → (∃ x : A, r) := sorry
+example : (∃ x, p x ∧ r) ↔ (∃ x, p x) ∧ r := sorry
+example : (∃ x, p x ∨ q x) ↔ (∃ x, p x) ∨ (∃ x, q x) := sorry
+
+example : (∀ x, p x) ↔ ¬ (∃ x, ¬ p x) := sorry
+example : (∃ x, p x) ↔ ¬ (∀ x, ¬ p x) := sorry
+example : (¬ ∃ x, p x) ↔ (∀ x, ¬ p x) := sorry
+example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := sorry
+
+example : (∀ x, p x → r) ↔ (∃ x, p x) → r := sorry
+example : (∃ x, p x → r) ↔ (∀ x, p x) → r := sorry
+example : (∃ x, r → p x) ↔ (r → ∃ x, p x) := sorry
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-27').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Notice that the declaration <code>variable a : A</code> amounts to the assumption
+that there is at least one element of type <code>A</code>. This assumption is
+needed in the second example, as well as in the last two.
+</p>
+
+<p>
+Here are solutions to two of the more difficult ones:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-28' mode="ace/mode/lean" readonly="true">example : (∃ x, p x ∨ q x) ↔ (∃ x, p x) ∨ (∃ x, q x) :=
+iff.intro
+  (assume H : ∃ x, p x ∨ q x,
+    obtain a (H1 : p a ∨ q a), from H,
+    or.elim H1
+      (assume Hpa : p a, or.inl (exists.intro a Hpa))
+      (assume Hqa : q a, or.inr (exists.intro a Hqa)))
+  (assume H : (∃ x, p x) ∨ (∃ x, q x),
+    or.elim H
+      (assume Hp : ∃ x, p x,
+        obtain a Hpa, from Hp,
+        exists.intro a (or.inl Hpa))
+      (assume Hq : ∃ x, q x,
+        obtain a Hqa, from Hq,
+        exists.intro a (or.inr Hqa)))
+
+example : (∃ x, p x → r) ↔ (∀ x, p x) → r :=
+iff.intro
+  (assume H1 : ∃ x, p x → r,
+    assume H2 : ∀ x, p x,
+    obtain b (Hb : p b → r), from H1,
+    show r, from  Hb (H2 b))
+  (assume H1 : (∀ x, p x) → r,
+    show ∃ x, p x → r, from
+      by_cases
+        (assume Hap : ∀ x, p x, exists.intro a (λ H', H1 Hap))
+        (assume Hnap : ¬ ∀ x, p x,
+          by_contradiction
+            (assume Hnex : ¬ ∃ x, p x → r,
+              have Hap : ∀ x, p x, from
+                take x,
+                by_contradiction
+                  (assume Hnp : ¬ p x,
+                    have Hex : ∃ x, p x → r,
+                      from exists.intro x (assume Hp, absurd Hp Hnp),
+                    show false, from Hnex Hex),
+              show false, from Hnap Hap)))</juicy-ace-editor><div id='lean-full-code-28' style='display:none'>open classical
+
+variables (A : Type) (p q : A → Prop)
+variable a : A
+variable r : Prop
+
+example : (∃ x, p x ∨ q x) ↔ (∃ x, p x) ∨ (∃ x, q x) :=
+iff.intro
+  (assume H : ∃ x, p x ∨ q x,
+    obtain a (H1 : p a ∨ q a), from H,
+    or.elim H1
+      (assume Hpa : p a, or.inl (exists.intro a Hpa))
+      (assume Hqa : q a, or.inr (exists.intro a Hqa)))
+  (assume H : (∃ x, p x) ∨ (∃ x, q x),
+    or.elim H
+      (assume Hp : ∃ x, p x,
+        obtain a Hpa, from Hp,
+        exists.intro a (or.inl Hpa))
+      (assume Hq : ∃ x, q x,
+        obtain a Hqa, from Hq,
+        exists.intro a (or.inr Hqa)))
+
+example : (∃ x, p x → r) ↔ (∀ x, p x) → r :=
+iff.intro
+  (assume H1 : ∃ x, p x → r,
+    assume H2 : ∀ x, p x,
+    obtain b (Hb : p b → r), from H1,
+    show r, from  Hb (H2 b))
+  (assume H1 : (∀ x, p x) → r,
+    show ∃ x, p x → r, from
+      by_cases
+        (assume Hap : ∀ x, p x, exists.intro a (λ H', H1 Hap))
+        (assume Hnap : ¬ ∀ x, p x,
+          by_contradiction
+            (assume Hnex : ¬ ∃ x, p x → r,
+              have Hap : ∀ x, p x, from
+                take x,
+                by_contradiction
+                  (assume Hnp : ¬ p x,
+                    have Hex : ∃ x, p x → r,
+                      from exists.intro x (assume Hp, absurd Hp Hnp),
+                    show false, from Hnex Hex),
+              show false, from Hnap Hap)))
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-28').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgf32af7f" class="outline-3">
+<h3 id="orgf32af7f"><span class="section-number-3"> 4.6</span> More on the Proof Language</h3>
+<div class="outline-text-3" id="text-1-6">
+<p>
+We have seen that keywords like <code>assume</code>, <code>take</code>, <code>have</code>, <code>show</code>, and
+<code>obtain</code> make it possible to write formal proof terms that mirror the
+structure of informal mathematical proofs. In this section, we discuss
+some additional features of the proof language that are often
+convenient.
+</p>
+
+<p>
+To start with, we can use anonymous "have" expressions to introduce an
+auxiliary goal without having to label it. We can refer to the last
+expression introduced in this way using the keyword <code>this</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-29' mode="ace/mode/lean" readonly="true">import data.nat
+open nat algebra
+
+variable f : ℕ → ℕ
+premise H : ∀ x : ℕ, f x ≤ f (x + 1)
+
+example : f 0 ≤ f 3 :=
+have f 0 ≤ f 1, from H 0,
+have f 0 ≤ f 2, from le.trans this (H 1),
+show f 0 ≤ f 3, from le.trans this (H 2)
+</juicy-ace-editor><div id='lean-full-code-29' style='display:none'>import data.nat
+open nat algebra
+
+variable f : ℕ → ℕ
+premise H : ∀ x : ℕ, f x ≤ f (x + 1)
+
+example : f 0 ≤ f 3 :=
+have f 0 ≤ f 1, from H 0,
+have f 0 ≤ f 2, from le.trans this (H 1),
+show f 0 ≤ f 3, from le.trans this (H 2)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-29').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Often proofs move from one fact to the next, so this can be effective
+in eliminating the clutter of lots of labels.
+</p>
+
+<p>
+One can also refer to any element or hypothesis in the context,
+anonymous or not, by enclosing the type in backticks:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-30' mode="ace/mode/lean" readonly="true">example : f 0 ≤ f 3 :=
+have f 0 ≤ f 1, from H 0,
+have f 0 ≤ f 2, from le.trans `f 0 ≤ f 1` (H 1),
+show f 0 ≤ f 3, from le.trans `f 0 ≤ f 2` (H 2)</juicy-ace-editor><div id='lean-full-code-30' style='display:none'>import data.nat
+open nat algebra
+
+variable f : ℕ → ℕ
+premise H : ∀ x : ℕ, f x ≤ f (x + 1)
+
+example : f 0 ≤ f 3 :=
+have f 0 ≤ f 1, from H 0,
+have f 0 ≤ f 2, from le.trans `f 0 ≤ f 1` (H 1),
+show f 0 ≤ f 3, from le.trans `f 0 ≤ f 2` (H 2)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-30').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the last line, for example, the expression <code>`f 0 ≤ f 2`</code> means "find
+any element of the context that has type <code>f 0 ≤ f 2</code>." In other words,
+we state the assertion rather than name the variable that witnesses
+its truth. This can be done anywhere later in the proof:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-31' mode="ace/mode/lean" readonly="true">example : f 0 ≤ f 3 :=
+have f 0 ≤ f 1, from H 0,
+have f 1 ≤ f 2, from H 1,
+have f 2 ≤ f 3, from H 2,
+show f 0 ≤ f 3, from le.trans `f 0 ≤ f 1` (le.trans `f 1 ≤ f 2` `f 2 ≤ f 3`)</juicy-ace-editor><div id='lean-full-code-31' style='display:none'>import data.nat
+open nat algebra
+
+variable f : ℕ → ℕ
+premise H : ∀ x : ℕ, f x ≤ f (x + 1)
+
+example : f 0 ≤ f 3 :=
+have f 0 ≤ f 1, from H 0,
+have f 1 ≤ f 2, from H 1,
+have f 2 ≤ f 3, from H 2,
+show f 0 ≤ f 3, from le.trans `f 0 ≤ f 1` (le.trans `f 1 ≤ f 2` `f 2 ≤ f 3`)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-31').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The <code>suppose</code> keyword acts as an anonymous assume:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-32' mode="ace/mode/lean" readonly="true">example : f 0 ≥ f 1 → f 0 = f 1 :=
+suppose f 0 ≥ f 1,
+show f 0 = f 1, from le.antisymm (H 0) this</juicy-ace-editor><div id='lean-full-code-32' style='display:none'>import data.nat
+open nat algebra
+
+variable f : ℕ → ℕ
+premise H : ∀ x : ℕ, f x ≤ f (x + 1)
+
+example : f 0 ≥ f 1 → f 0 = f 1 :=
+suppose f 0 ≥ f 1,
+show f 0 = f 1, from le.antisymm (H 0) this
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-32').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Notice that there is an asymmetry: you can use <code>have</code> with or without
+a label, but if you do not wish to name the assumption, you must use
+<code>suppose</code> rather than <code>assume</code>. The reason is that Lean allows us to
+write <code>assume H</code> to introduce a hypothesis without specifying it,
+leaving it to the system to infer to relevant assumption. An anonymous
+<code>assume</code> would thus lead to ambiguities when parsing expressions. 
+</p>
+
+<p>
+As with the anonymous <code>have</code>, when you use <code>suppose</code> to introduce an
+assumption, that assumption can also be invoked later in the proof by
+enclosing it in backticks.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-33' mode="ace/mode/lean" readonly="true">example : f 0 ≥ f 1 → f 1 ≥ f 2 → f 0 = f 2 :=
+suppose f 0 ≥ f 1,
+suppose f 1 ≥ f 2,
+have f 0 ≥ f 2, from le.trans `f 2 ≤ f 1` `f 1 ≤ f 0`,
+have f 0 ≤ f 2, from le.trans (H 0) (H 1),
+show f 0 = f 2, from le.antisymm this `f 0 ≥ f 2`</juicy-ace-editor><div id='lean-full-code-33' style='display:none'>import data.nat
+open nat algebra
+
+variable f : ℕ → ℕ
+premise H : ∀ x : ℕ, f x ≤ f (x + 1)
+
+example : f 0 ≥ f 1 → f 1 ≥ f 2 → f 0 = f 2 :=
+suppose f 0 ≥ f 1,
+suppose f 1 ≥ f 2,
+have f 0 ≥ f 2, from le.trans `f 2 ≤ f 1` `f 1 ≤ f 0`,
+have f 0 ≤ f 2, from le.trans (H 0) (H 1),
+show f 0 = f 2, from le.antisymm this `f 0 ≥ f 2`
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-33').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Notice that <code>le.antisymm</code> is the assertion that if <code>a ≤ b</code> and <code>b ≤ a</code>
+then <code>a = b</code>, and <code>a ≥ b</code> is definitionally equal to <code>b ≤ a</code>.
+</p>
+
+<p>
+One can also do an anonymous <code>assume</code> by enclosing the statement in
+backticks.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-34' mode="ace/mode/lean" readonly="true">example : f 0 ≥ f 1 → f 1 ≥ f 2 → f 0 = f 2 :=
+assume `f 0 ≥ f 1`,
+assume `f 1 ≥ f 2`,
+have f 0 ≥ f 2, from le.trans `f 2 ≤ f 1` `f 1 ≤ f 0`,
+have f 0 ≤ f 2, from le.trans (H 0) (H 1),
+show f 0 = f 2, from le.antisymm this `f 0 ≥ f 2`</juicy-ace-editor><div id='lean-full-code-34' style='display:none'>import data.nat
+open nat algebra
+
+variable f : ℕ → ℕ
+premise H : ∀ x : ℕ, f x ≤ f (x + 1)
+
+example : f 0 ≥ f 1 → f 1 ≥ f 2 → f 0 = f 2 :=
+assume `f 0 ≥ f 1`,
+assume `f 1 ≥ f 2`,
+have f 0 ≥ f 2, from le.trans `f 2 ≤ f 1` `f 1 ≤ f 0`,
+have f 0 ≤ f 2, from le.trans (H 0) (H 1),
+show f 0 = f 2, from le.antisymm this `f 0 ≥ f 2`
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-34').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+This is slightly weaker than using <code>suppose</code>, because we can no longer
+use the identifier <code>this</code>. But the mechanism is more general: it can
+be used with other binders, like <code>take</code> and <code>obtains</code>.
+</p>
+
+<p>
+If more than one element of the context has the named type, the
+expression is ambiguous:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-35' mode="ace/mode/lean" readonly="true">definition imp_self (p : Prop) : p → p :=
+assume `p`, `p`
+
+print imp_self
+
+definition imp_self2 (p : Prop) : p → p → p :=
+assume `p` `p`, `p`
+
+print imp_self2
+</juicy-ace-editor><div id='lean-full-code-35' style='display:none'>definition imp_self (p : Prop) : p → p :=
+assume `p`, `p`
+
+print imp_self
+
+definition imp_self2 (p : Prop) : p → p → p :=
+assume `p` `p`, `p`
+
+print imp_self2
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-35').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The output shows that in the second example, it is the second argument
+that is chosen. Using anonymous binders when data is involved looks
+somewhat odd:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-36' mode="ace/mode/lean" readonly="true">definition idnat : ℕ → ℕ :=
+take `ℕ`, `ℕ`
+
+print idnat
+
+definition idnat2 : ℕ → ℕ → ℕ :=
+take `ℕ` `ℕ`, `ℕ`
+
+print idnat2
+eval idnat2 0 1  -- returns 1</juicy-ace-editor><div id='lean-full-code-36' style='display:none'>import data.nat
+open nat algebra
+
+definition idnat : ℕ → ℕ :=
+take `ℕ`, `ℕ`
+
+print idnat
+
+definition idnat2 : ℕ → ℕ → ℕ :=
+take `ℕ` `ℕ`, `ℕ`
+
+print idnat2
+eval idnat2 0 1  -- returns 1
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-36').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+But with propositions it is usually quite natural. Here is an example
+of an anonymous binder used with the <code>obtain</code> construction, continuing
+the examples above.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-37' mode="ace/mode/lean" readonly="true">variable f : ℕ → ℕ
+
+example (H : ∀ x : ℕ, f x ≤ f (x + 1)) (H' : ∃ x, f (x + 1) ≤ f x) :
+  ∃ x, f (x + 1) = f x :=
+obtain x `f (x + 1) ≤ f x`, from H',
+exists.intro x
+  (show f (x + 1) = f x, from le.antisymm `f (x + 1) ≤ f x` (H x))</juicy-ace-editor><div id='lean-full-code-37' style='display:none'>import data.nat
+open nat algebra
+
+variable f : ℕ → ℕ
+
+example (H : ∀ x : ℕ, f x ≤ f (x + 1)) (H' : ∃ x, f (x + 1) ≤ f x) :
+  ∃ x, f (x + 1) = f x :=
+obtain x `f (x + 1) ≤ f x`, from H',
+exists.intro x
+  (show f (x + 1) = f x, from le.antisymm `f (x + 1) ≤ f x` (H x))
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-37').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The following proof that the square root of two is irrational can be
+found in the standard library. It provides a nice example of the way that
+proof terms can be structured and made readable using the devices we have
+discussed here.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-38' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+  
+theorem sqrt_two_irrational {a b : ℕ} (co : coprime a b) : a^2 ≠ 2 * b^2 :=
+assume H : a^2 = 2 * b^2,
+have even (a^2),
+  from even_of_exists (exists.intro _ H),
+have even a,
+  from even_of_even_pow this,
+obtain (c : ℕ) (aeq : a = 2 * c),
+  from exists_of_even this,
+have 2 * (2 * c^2) = 2 * b^2,
+  by rewrite [-H, aeq, *pow_two, mul.assoc, mul.left_comm c],
+have 2 * c^2 = b^2,
+  from eq_of_mul_eq_mul_left dec_trivial this,
+have even (b^2),
+  from even_of_exists (exists.intro _ (eq.symm this)),
+have even b,
+  from even_of_even_pow this,
+have 2 ∣ gcd a b,
+  from dvd_gcd (dvd_of_even `even a`) (dvd_of_even `even b`),
+have 2 ∣ (1 : ℕ),
+  by rewrite [gcd_eq_one_of_coprime co at this]; exact this,
+show false, from absurd `2 ∣ 1` dec_trivial
+</juicy-ace-editor><div id='lean-full-code-38' style='display:none'>import data.nat
+open nat
+  
+theorem sqrt_two_irrational {a b : ℕ} (co : coprime a b) : a^2 ≠ 2 * b^2 :=
+assume H : a^2 = 2 * b^2,
+have even (a^2),
+  from even_of_exists (exists.intro _ H),
+have even a,
+  from even_of_even_pow this,
+obtain (c : ℕ) (aeq : a = 2 * c),
+  from exists_of_even this,
+have 2 * (2 * c^2) = 2 * b^2,
+  by rewrite [-H, aeq, *pow_two, mul.assoc, mul.left_comm c],
+have 2 * c^2 = b^2,
+  from eq_of_mul_eq_mul_left dec_trivial this,
+have even (b^2),
+  from even_of_exists (exists.intro _ (eq.symm this)),
+have even b,
+  from even_of_even_pow this,
+have 2 ∣ gcd a b,
+  from dvd_gcd (dvd_of_even `even a`) (dvd_of_even `even b`),
+have 2 ∣ (1 : ℕ),
+  by rewrite [gcd_eq_one_of_coprime co at this]; exact this,
+show false, from absurd `2 ∣ 1` dec_trivial
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-38').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

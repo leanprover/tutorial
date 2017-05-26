@@ -1,0 +1,522 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:44 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theorem Proving in Lean</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]]Jeremy Avigad, [[http://leodemoura.github.io][Leonardo de Moura]]Leonardo de Moura, [[http://www.cs.cmu.edu/~soonhok][Soonho Kong]]Soonho Kong" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Theorem Proving in Lean</h1>
+
+<div id="outline-container-org55a4aec" class="outline-2">
+<h2 id="More_Tactics"><a id="org55a4aec"></a><span class="section-number-2"> 13</span> More Tactics</h2>
+<div class="outline-text-2" id="text-More_Tactics">
+<p>
+We have seen that tactics provide a powerful language for describing
+and constructing proofs. Care is required: a proof that is a long
+string of tactic applications can be very hard to read and
+maintain. But when combined with the various structuring mechanisms
+that Lean's proof language has to offer, they provide efficient means
+for filling in the details of a proof. The goal of this chapter is to
+add some additional tactics to your repertoire.
+</p>
+
+<p>
+[This chapter is still under construction.]
+</p>
+</div>
+
+<div id="outline-container-org60e6569" class="outline-3">
+<h3 id="org60e6569"><span class="section-number-3"> 13.1</span> Induction</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+Just as the <code>cases</code> tactic performs proof by cases on an element of an
+inductively defined type, the <code>induction</code> tactic performs a proof by
+induction. As with the <code>cases</code> tactic, the <code>with</code> clause allows you to
+name the variables and hypotheses that are introduced. Also as with
+the <code>cases</code> tactic, the <code>induction</code> tactic will revert any hypotheses
+that depend on the induction variable and then reintroduce them for
+you automatically. The following examples prove the commutativity of
+addition on the natural numbers, using only the defining equations for
+addition (in particular, the property <code>add_succ</code>, which asserts that
+<code>x + succ y = succ (x + y)</code> for every <code>x</code> and <code>y</code>).
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-1' mode="ace/mode/lean" readonly="true">open nat
+
+theorem zero_add (x : ℕ) : 0 + x = x :=
+begin
+  induction x with x ih,
+    {exact rfl},
+  rewrite [add_succ, ih]
+end
+
+theorem succ_add (x y : ℕ) : succ x + y = succ (x + y) :=
+begin
+  induction y with y ih,
+    {exact rfl},
+  rewrite [add_succ, ih]
+end
+
+theorem add.comm (x y : ℕ) : x + y = y + x :=
+begin
+  induction x with x ih,
+    {show 0 + y = y + 0, by rewrite zero_add},
+  show succ x + y = y + succ x,
+    begin
+      induction y with y ihy,
+        {krewrite zero_add},
+      rewrite [succ_add, ih]
+    end
+end</juicy-ace-editor><div id='lean-full-code-1' style='display:none'>import data.nat
+namespace hide
+open nat
+
+theorem zero_add (x : ℕ) : 0 + x = x :=
+begin
+  induction x with x ih,
+    {exact rfl},
+  rewrite [add_succ, ih]
+end
+
+theorem succ_add (x y : ℕ) : succ x + y = succ (x + y) :=
+begin
+  induction y with y ih,
+    {exact rfl},
+  rewrite [add_succ, ih]
+end
+
+theorem add.comm (x y : ℕ) : x + y = y + x :=
+begin
+  induction x with x ih,
+    {show 0 + y = y + 0, by rewrite zero_add},
+  show succ x + y = y + succ x,
+    begin
+      induction y with y ihy,
+        {krewrite zero_add},
+      rewrite [succ_add, ih]
+    end
+end
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-1').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+(For the use of <code>krewrite</code> here, see the end of Chapter <a href="#" onclick="myModule.loadTutorial('11_Tactic-Style_Proofs.html', 'Tactic-Style_Proofs')">Tactic-Style
+Proofs</a>.)
+</p>
+
+<p>
+The induction tactic can be used not only with the induction
+principles that are created automatically when an inductive type is
+defined, but also induction principles that prove on their own. For
+example, recall that the standard library defines the type <code>finset A</code>
+of finite sets of elements of any type <code>A</code>. Typically, we assume <code>A</code>
+has decidable equality, which means in particular that we can decide
+whether an element <code>a : A</code> is a member of a finite set <code>s</code>. Clearly, a
+property <code>P</code> holds for an arbitrary finite set when it holds for the
+empty set and when it is maintained for a finite set <code>s</code> after a new
+element <code>a</code>, that was not previosly in <code>s</code>, is added to <code>s</code>. This is
+encapsulated by the following principle of induction:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-2' mode="ace/mode/lean" readonly="true">theorem finset.induction {A : Type} [h : decidable_eq A] {P : finset A → Prop}
+  (H₁ : P finset.empty)
+  (H₂ : ∀ ⦃a : A⦄ {s : finset A}, a ∉ s → P s → P (insert a s))
+  : (∀ s, P s)</juicy-ace-editor><div id='lean-full-code-2' style='display:none'>open finset
+namespace hide
+theorem finset.induction {A : Type} [h : decidable_eq A] {P : finset A → Prop}
+  (H₁ : P finset.empty)
+  (H₂ : ∀ ⦃a : A⦄ {s : finset A}, a ∉ s → P s → P (insert a s))
+  : (∀ s, P s)
+  := sorry
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-2').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+To use this as an induction principle, one has to mark it with the
+attribute <code>[recursor 6]</code>, which tells the induction tactic that this
+is a user defined induction principle in which induction is carried
+out on the sixth argument. This is done in the standard library. Then,
+when induction is carried out on an element of <code>finset</code>, the induction
+tactic finds the relevant principle.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-3' mode="ace/mode/lean" readonly="true">import data.finset data.nat
+open finset nat
+
+variables (A : Type) [deceqA : decidable_eq A]
+include deceqA
+
+theorem card_add_card (s₁ s₂ : finset A) : card s₁ + card s₂ = card (s₁ ∪ s₂) + card (s₁ ∩ s₂) :=
+begin
+  induction s₂ with a s₂ hs₂ ih,
+    show card s₁ + card (∅:finset A) = card (s₁ ∪ ∅) + card (s₁ ∩ ∅),
+      by rewrite [union_empty, card_empty, inter_empty],
+    show card s₁ + card (insert a s₂) = card (s₁ ∪ (insert a s₂)) + card (s₁ ∩ (insert a s₂)),
+      from sorry
+end
+</juicy-ace-editor><div id='lean-full-code-3' style='display:none'>import data.finset data.nat
+open finset nat
+
+variables (A : Type) [deceqA : decidable_eq A]
+include deceqA
+
+theorem card_add_card (s₁ s₂ : finset A) : card s₁ + card s₂ = card (s₁ ∪ s₂) + card (s₁ ∩ s₂) :=
+begin
+  induction s₂ with a s₂ hs₂ ih,
+    show card s₁ + card (∅:finset A) = card (s₁ ∪ ∅) + card (s₁ ∩ ∅),
+      by rewrite [union_empty, card_empty, inter_empty],
+    show card s₁ + card (insert a s₂) = card (s₁ ∪ (insert a s₂)) + card (s₁ ∩ (insert a s₂)),
+      from sorry
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-3').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The proof is carried out by induction on <code>s₂</code>. According to the <code>with</code>
+clause, the inductive step concerns the set <code>insert a s₂</code> in place of
+<code>s₂</code>, <code>hs₂</code> denotes the assuption <code>a ∉ s₂</code>, and <code>ih</code> denotes the
+inductive hypothesis. (The full proof can be found in the library.) If
+necessary, we can specify the induction principle manually:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-4' mode="ace/mode/lean" readonly="true">theorem card_add_card (s₁ s₂ : finset A) : card s₁ + card s₂ = card (s₁ ∪ s₂) + card (s₁ ∩ s₂) :=
+begin
+  induction s₂ using finset.induction with a s₂ hs₂ ih,
+    show card s₁ + card (∅:finset A) = card (s₁ ∪ ∅) + card (s₁ ∩ ∅),
+      by rewrite [union_empty, card_empty, inter_empty],
+    show card s₁ + card (insert a s₂) = card (s₁ ∪ (insert a s₂)) + card (s₁ ∩ (insert a s₂)),
+      from sorry
+end</juicy-ace-editor><div id='lean-full-code-4' style='display:none'>import data.finset data.nat
+open finset nat
+
+variables (A : Type) [deceqA : decidable_eq A]
+include deceqA
+
+theorem card_add_card (s₁ s₂ : finset A) : card s₁ + card s₂ = card (s₁ ∪ s₂) + card (s₁ ∩ s₂) :=
+begin
+  induction s₂ using finset.induction with a s₂ hs₂ ih,
+    show card s₁ + card (∅:finset A) = card (s₁ ∪ ∅) + card (s₁ ∩ ∅),
+      by rewrite [union_empty, card_empty, inter_empty],
+    show card s₁ + card (insert a s₂) = card (s₁ ∪ (insert a s₂)) + card (s₁ ∩ (insert a s₂)),
+      from sorry
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-4').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org4a8e16a" class="outline-3">
+<h3 id="org4a8e16a"><span class="section-number-3"> 13.2</span> Other Tactics</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+The tactic <code>subst</code> substitutes a variable defined in the context, and
+clears both the variable and the hypothesis. The tactic <code>substvars</code>
+substitutes all the variables in the context.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-5' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+variables a b c d : ℕ
+
+example (Ha : a = b + c) : c + a = c + (b + c) :=
+by subst a
+
+example (Ha : a = b + c) (Hd : d = b) : a + d = b + c + d :=
+by subst [a, d]
+
+example (Ha : a = b + c) (Hd : d = b) : a + d = b + c + d :=
+by substvars
+
+example (Ha : a = b + c) (Hd : b = d) : a + d = d + c + d :=
+by substvars
+
+example (Hd : b = d) (Ha : a = b + c) : a + d = d + c + d :=
+by substvars
+</juicy-ace-editor><div id='lean-full-code-5' style='display:none'>import data.nat
+open nat
+
+variables a b c d : ℕ
+
+example (Ha : a = b + c) : c + a = c + (b + c) :=
+by subst a
+
+example (Ha : a = b + c) (Hd : d = b) : a + d = b + c + d :=
+by subst [a, d]
+
+example (Ha : a = b + c) (Hd : d = b) : a + d = b + c + d :=
+by substvars
+
+example (Ha : a = b + c) (Hd : b = d) : a + d = d + c + d :=
+by substvars
+
+example (Hd : b = d) (Ha : a = b + c) : a + d = d + c + d :=
+by substvars
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-5').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+A number of tactics are designed to help construct elements of
+inductive types. For example <code>constructor &lt;i&gt;</code> constructs an element of an
+inductive type by applying the ith constructor; <code>constructor</code> alone
+applies the first constructor that succeeds. The tactic <code>split</code> can
+only be applied to inductive types with only one constructor, and is
+then equivalent to <code>constructor 1</code>. Similarly, <code>left</code> and <code>right</code> are
+designed for use with inductive types with two constructors, and are
+then equivalent to <code>constructor 1</code> and <code>constructor 2</code>,
+respectively. Here are prototypical examples:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-6' mode="ace/mode/lean" readonly="true">
+variables p q : Prop
+
+example (Hp : p) (Hq : q) : p ∧ q :=
+by split; exact Hp; exact Hq
+
+example (Hp : p) (Hq : q) : p ∧ q :=
+by split; repeat assumption
+
+example (Hp : p) : p ∨ q :=
+by constructor; assumption
+
+example (Hq : q) : p ∨ q :=
+by constructor; assumption
+
+example (Hp : p) : p ∨ q :=
+by constructor 1; assumption
+
+example (Hq : q) : p ∨ q :=
+by constructor 2; assumption
+
+example (Hp : p) : p ∨ q :=
+by left; assumption
+
+example (Hq : q) : p ∨ q :=
+by right; assumption
+</juicy-ace-editor><div id='lean-full-code-6' style='display:none'>
+variables p q : Prop
+
+example (Hp : p) (Hq : q) : p ∧ q :=
+by split; exact Hp; exact Hq
+
+example (Hp : p) (Hq : q) : p ∧ q :=
+by split; repeat assumption
+
+example (Hp : p) : p ∨ q :=
+by constructor; assumption
+
+example (Hq : q) : p ∨ q :=
+by constructor; assumption
+
+example (Hp : p) : p ∨ q :=
+by constructor 1; assumption
+
+example (Hq : q) : p ∨ q :=
+by constructor 2; assumption
+
+example (Hp : p) : p ∨ q :=
+by left; assumption
+
+example (Hq : q) : p ∨ q :=
+by right; assumption
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-6').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The tactic <code>existsi</code> is similar to <code>constructor 1</code>, but it
+allows us to provide an argument, as is commonly done with when
+introducing an element of an <code>exists</code> or <code>sigma</code> type.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-7' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+example : ∃ x : ℕ, x &gt; 2 :=
+by existsi 3; exact dec_trivial
+
+example (B : ℕ → Type) (b : B 2) : Σ x : ℕ, B x :=
+by existsi 2; assumption
+</juicy-ace-editor><div id='lean-full-code-7' style='display:none'>import data.nat
+open nat
+
+example : ∃ x : ℕ, x &gt; 2 :=
+by existsi 3; exact dec_trivial
+
+example (B : ℕ → Type) (b : B 2) : Σ x : ℕ, B x :=
+by existsi 2; assumption
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-7').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The <code>injection</code> tactic makes use of the fact that constructors to an
+inductive type are injective:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-8' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+example (x y : ℕ) (H : succ x = succ y) : x = y :=
+by injection H with H'; exact H'
+
+example (x y : ℕ) (H : succ x = succ y) : x = y :=
+by injection H; assumption
+</juicy-ace-editor><div id='lean-full-code-8' style='display:none'>import data.nat
+open nat
+
+example (x y : ℕ) (H : succ x = succ y) : x = y :=
+by injection H with H'; exact H'
+
+example (x y : ℕ) (H : succ x = succ y) : x = y :=
+by injection H; assumption
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-8').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The first version gives the name the consequence of applying
+injectivity to the hypothesis <code>H</code>. The second version lets Lean choose
+the name.
+</p>
+
+<p>
+The tactics <code>reflexivity</code>, <code>symmetry</code>, and <code>transitivity</code> work not
+just for equality, but also for any relation with a corresponding
+theorem marked with the attribute <code>refl</code>, <code>symm</code>, or <code>trans</code>,
+respectively. Here is an example of their use:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-9' mode="ace/mode/lean" readonly="true">variables (A : Type) (a b c d : A)
+
+example (H₁ : a = b) (H₂ : c = b) (H₃ : c = d) : a = d :=
+by transitivity b; assumption; transitivity c; symmetry; assumption; assumption
+</juicy-ace-editor><div id='lean-full-code-9' style='display:none'>variables (A : Type) (a b c d : A)
+
+example (H₁ : a = b) (H₂ : c = b) (H₃ : c = d) : a = d :=
+by transitivity b; assumption; transitivity c; symmetry; assumption; assumption
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-9').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The <code>contradiction</code> tactic closes a goal when contradictory hypotheses
+have been derived:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-10' mode="ace/mode/lean" readonly="true">variables p q : Prop
+
+example (Hp : p) (Hnp : ¬ p) : q :=
+by contradiction
+</juicy-ace-editor><div id='lean-full-code-10' style='display:none'>variables p q : Prop
+
+example (Hp : p) (Hnp : ¬ p) : q :=
+by contradiction
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-10').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Similarly, <code>exfalso</code> and <code>trivial</code> implement "ex falso quodlibet" and
+the introduction rule for <code>true</code>, respectively.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org38a80d2" class="outline-3">
+<h3 id="org38a80d2"><span class="section-number-3"> 13.3</span> Combinators</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+Combinators are used to combine tactics. The most basic one is the
+<code>and_then</code> combinator, written with a semicolon (<code>;</code>), which applies tactics
+successively. 
+</p>
+
+<p>
+The <code>par</code> combinator, written with a vertical bar (<code>|</code>), tries one tactic and then the other,
+using the first one that succeeds. The <code>repeat</code> tactic applies a
+tactic repeatedly. Here is an example of these in use:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-11' mode="ace/mode/lean" readonly="true">example (a b c d : Prop) : a ∧ b ∧ c ∧ d ↔ d ∧ c ∧ b ∧ a :=
+begin
+  apply iff.intro,
+  repeat (intro H; repeat (cases H with [H', H] | apply and.intro | assumption))
+end
+</juicy-ace-editor><div id='lean-full-code-11' style='display:none'>example (a b c d : Prop) : a ∧ b ∧ c ∧ d ↔ d ∧ c ∧ b ∧ a :=
+begin
+  apply iff.intro,
+  repeat (intro H; repeat (cases H with [H', H] | apply and.intro | assumption))
+end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-11').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Here is another one:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-12' mode="ace/mode/lean" readonly="true">import data.set
+open set function eq.ops
+
+variables {X Y Z : Type}
+
+lemma image_comp (f : Y → X) (g : X → Y) (a : set X) : (f ∘ g) ' a = f ' (g ' a) :=
+set.ext (take z,
+  iff.intro
+    (assume Hz,
+      obtain x Hx₁ Hx₂, from Hz,
+      by repeat (apply mem_image | assumption | reflexivity))
+    (assume Hz,
+      obtain y [x Hz₁ Hz₂] Hy₂, from Hz,
+      by repeat (apply mem_image | assumption | esimp [comp] | rewrite Hz₂)))
+</juicy-ace-editor><div id='lean-full-code-12' style='display:none'>import data.set
+open set function eq.ops
+
+variables {X Y Z : Type}
+
+lemma image_comp (f : Y → X) (g : X → Y) (a : set X) : (f ∘ g) ' a = f ' (g ' a) :=
+set.ext (take z,
+  iff.intro
+    (assume Hz,
+      obtain x Hx₁ Hx₂, from Hz,
+      by repeat (apply mem_image | assumption | reflexivity))
+    (assume Hz,
+      obtain y [x Hz₁ Hz₂] Hy₂, from Hz,
+      by repeat (apply mem_image | assumption | esimp [comp] | rewrite Hz₂)))
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-12').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Finally, some tactics can be used to "debug" a tactic proof by
+printing output to the screen when Lean is run from the command
+line. The command <code>trace</code> produces the given output, <code>state</code> shows the
+current goal, <code>now</code> fails if there are any current goals, and
+<code>check_expr t</code> displays the type of the expression in the context of
+the current goal.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-13' mode="ace/mode/lean" readonly="true">open tactic
+
+theorem tst {A B : Prop} (H1 : A) (H2 : B) : A :=
+by (trace "first";  state; now  |
+       trace "second"; state; fail |
+       trace "third";  assumption)
+</juicy-ace-editor><div id='lean-full-code-13' style='display:none'>open tactic
+
+theorem tst {A B : Prop} (H1 : A) (H2 : B) : A :=
+by (trace "first";  state; now  |
+       trace "second"; state; fail |
+       trace "third";  assumption)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-13').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Other tactics can be used to manipulate goals. For example,
+<code>rotate_left</code> or <code>rotate_right</code> followed by a number rotates through
+the goals. The tactic <code>rotate</code> is equivalent to <code>rotate_left</code>.
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

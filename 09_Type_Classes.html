@@ -1,0 +1,1447 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:45 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theorem Proving in Lean</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]]Jeremy Avigad, [[http://leodemoura.github.io][Leonardo de Moura]]Leonardo de Moura, [[http://www.cs.cmu.edu/~soonhok][Soonho Kong]]Soonho Kong" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Theorem Proving in Lean</h1>
+
+<div id="outline-container-org89f8a46" class="outline-2">
+<h2 id="Type_Classes"><a id="org89f8a46"></a><span class="section-number-2"> 9</span> Type Classes</h2>
+<div class="outline-text-2" id="text-Type_Classes">
+<p>
+We have seen that Lean's elaborator provides helpful automation,
+filling in information that is tedious to enter by hand. In this
+section we will explore a simple but powerful technical device known
+as <i>type class inference</i>, which provides yet another mechanism for
+the elaborator to supply missing information.
+</p>
+
+<p>
+The notion of a <i>type class</i> originated with the <i>Haskell</i> programming
+language. Many of the original uses carry over, but, as we will see,
+the realm of interactive theorem proving raises even more
+possibilities for their use.
+</p>
+</div>
+
+<div id="outline-container-orgb4bff32" class="outline-3">
+<h3 id="orgb4bff32"><span class="section-number-3"> 9.1</span> Type Classes and Instances</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+The basic idea is simple. In Section <a href="#" onclick="myModule.loadTutorial('08_Building_Theories_and_Proofs.html', 'More_on_Coercions')">More on Coercions</a>, we saw that
+any family types can serve as the source or target of a coercion. In
+much the same way, any family of types can be marked as a <i>type
+class</i>. Then we can declare particular elements of a type class to be
+<i>instances</i>. These provide hints to the elaborator: any time the
+elaborator is looking for an element of a type class, it can consult a
+table of declared instances to find a suitable element.
+</p>
+
+<p>
+More precisely, there are three steps involved:
+</p>
+<ul class="org-ul">
+<li>First, we declare a family of inductive types to be a type class.</li>
+<li>Second, we declare instances of the type class.</li>
+<li>Finally, we mark some implicit arguments with square brackets
+instead of curly brackets, to inform the elaborator that these
+arguments should be inferred by the type class mechanism.</li>
+</ul>
+
+<p>
+Here is a somewhat frivolous example:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-1' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+attribute nat [class]
+
+definition nat_one [instance] : ℕ := 1
+
+definition foo [x : ℕ] : nat := x
+
+check @foo
+eval foo
+
+example : foo = 1 := rfl
+</juicy-ace-editor><div id='lean-full-code-1' style='display:none'>import data.nat
+open nat
+
+attribute nat [class]
+
+definition nat_one [instance] : ℕ := 1
+
+definition foo [x : ℕ] : nat := x
+
+check @foo
+eval foo
+
+example : foo = 1 := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-1').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Here we declare <code>nat</code> to be a class with a "canonical" instance
+<code>1</code>. Then we declare <code>foo</code> to be, essentially, the identity function
+on the natural numbers, but we mark the argument implicit, and
+indicate that it should be inferred by type class inference. When we write
+<code>foo</code>, the preprocessor interprets it as <code>foo ?x</code>, where <code>?x</code> is an
+implicit argument. But when the elaborator gets hold of the
+expression, it sees that <code>?x : ℕ</code> is supposed to be solved by type
+class inference. It looks for a suitable element of the class, and it
+finds the instance <code>one</code>. Thus, when we evaluate <code>foo</code>, we
+simply get <code>1</code>.
+</p>
+
+<p>
+It is tempting to think of <code>foo</code> as defined to be equal to <code>1</code>, but
+that is misleading. Every time we write <code>foo</code>, the elaborator searches
+for a value. If we declare other instances of the class, that can
+change the value that is assigned to the implicit argument. This can
+result in seemingly paradoxical behavior. For example, we might
+continue the development above as follows:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-2' mode="ace/mode/lean" readonly="true">definition nat_two [instance] : ℕ := 2
+
+eval foo
+
+example : foo ≠ 1 := dec_trivial</juicy-ace-editor><div id='lean-full-code-2' style='display:none'>import data.nat
+open nat
+
+attribute nat [class]
+
+definition nat_one [instance] : ℕ := 1
+
+definition foo [x : ℕ] : nat := x
+
+eval foo
+
+example : foo = 1 := rfl
+
+definition nat_two [instance] : ℕ := 2
+
+eval foo
+
+example : foo ≠ 1 := dec_trivial
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-2').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Now the "same" expression <code>foo</code> evaluates to <code>2</code>. Whereas before we
+could prove <code>foo = 1</code>, now we can prove <code>foo ≠ 1</code>, because the
+inferred implicit argument has changed. When searching for a suitable
+instance of a type class, the elaborator tries the most recent
+instance declaration first, by default. We will see below, however,
+that it is possible to give individual instances higher or lower
+priority. The proof <code>dec_trivial</code> will be explained below.
+</p>
+
+<p>
+As with <code>coercion</code> and other attributes, you can assign the <code>class</code> or
+<code>instance</code> attributes in a definition, or after the fact, with an
+<code>attribute</code> command. As usual, the assignments <code>attribute foo [class]</code>
+and <code>attribute foo [instance]</code> are only in effect in the current
+namespace, but the assignments persist on import. To limit the scope
+of an assignment to the current file, use the <code>local attribute</code>
+variant.
+</p>
+
+<p>
+The reason the example is frivolous is that there is rarely a need to
+"infer" a natural number; we can just hard-code the choice of <code>1</code> or
+<code>2</code> into the definition of <code>foo</code>. Type classes become useful when
+they depend on parameters, in which case, the value that is inferred
+depends on these parameters.
+</p>
+
+<p>
+Let us work through a simple example. Many theorems hold under the
+additional assumption that a type is inhabited, which is to say, it
+has at least one element. For example, if <code>A</code> is a type, <code>∃ x : A, x =
+x</code> is true only if <code>A</code> is inhabited. Similarly, it often happens that
+we would like a definition to return a default element in a "corner
+case." For example, we would like the expression <code>head l</code> to be of
+type <code>A</code> when <code>l</code> is of type <code>list A</code>; but then we are faced with the
+problem that <code>head l</code> needs to return an "arbitrary" element of <code>A</code> in
+the case where <code>l</code> is the empty list, <code>nil</code>.
+</p>
+
+<p>
+For purposes like this, the standard library defines a type class
+<code>inhabited : Type → Type</code>, to enable type class inference to infer a
+"default" or "arbitrary" element of an inhabited type. We will carry
+out a similar development in the examples that follow, using a
+namespace <code>hide</code> to avoid conflicting with the definitions in the
+standard library.
+</p>
+
+<p>
+Let us start with the first step of the program above, declaring an
+appropriate class:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-3' mode="ace/mode/lean" readonly="true">inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A</juicy-ace-editor><div id='lean-full-code-3' style='display:none'>namespace hide
+
+inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-3').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+An element of the class <code>inhabited A</code> is simply an expression of the
+form <code>inhabited.mk a</code>, for some element <code>a : A</code>. The eliminator for
+the inductive type will allow us to "extract" such an element of <code>A</code>
+from an element of <code>inhabited A</code>.
+</p>
+
+<p>
+The second step of the program is to populate the class with some
+instances:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-4' mode="ace/mode/lean" readonly="true">definition Prop.is_inhabited [instance] : inhabited Prop :=
+inhabited.mk true
+
+definition bool.is_inhabited [instance] : inhabited bool :=
+inhabited.mk bool.tt
+
+definition nat.is_inhabited [instance] : inhabited nat :=
+inhabited.mk nat.zero
+
+definition unit.is_inhabited [instance] : inhabited unit :=
+inhabited.mk unit.star</juicy-ace-editor><div id='lean-full-code-4' style='display:none'>namespace hide
+
+inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A
+
+definition Prop.is_inhabited [instance] : inhabited Prop :=
+inhabited.mk true
+
+definition bool.is_inhabited [instance] : inhabited bool :=
+inhabited.mk bool.tt
+
+definition nat.is_inhabited [instance] : inhabited nat :=
+inhabited.mk nat.zero
+
+definition unit.is_inhabited [instance] : inhabited unit :=
+inhabited.mk unit.star
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-4').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+This arranges things so that when type class inference is asked to
+infer an element <code>?M : Prop</code>, it can find the element <code>true</code> to assign
+to <code>?M</code>, and similarly for the elements <code>tt</code>, <code>zero</code>, and <code>star</code> of
+the types <code>bool</code>, <code>nat</code>, and <code>unit</code>, respectively.
+</p>
+
+<p>
+The final step of the program is to define a function that infers an
+element <code>H : inhabited A</code> and puts it to good use. The following
+function simply extracts the corresponding element <code>a : A</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-5' mode="ace/mode/lean" readonly="true">definition default (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H</juicy-ace-editor><div id='lean-full-code-5' style='display:none'>namespace hide
+
+inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A
+
+definition Prop.is_inhabited [instance] : inhabited Prop :=
+inhabited.mk true
+
+definition bool.is_inhabited [instance] : inhabited bool :=
+inhabited.mk bool.tt
+
+definition nat.is_inhabited [instance] : inhabited nat :=
+inhabited.mk nat.zero
+
+definition unit.is_inhabited [instance] : inhabited unit :=
+inhabited.mk unit.star
+
+definition default (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-5').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+This has the effect that given a type expression <code>A</code>, whenever we
+write <code>default A</code>, we are really writing <code>default A ?H</code>, leaving the
+elaborator to find a suitable value for the metavariable
+<code>?H</code>. When the elaborator succeeds in finding such a value, it has
+effectively produced an element of type <code>A</code>, as though by magic.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-6' mode="ace/mode/lean" readonly="true">check default Prop    -- Prop
+check default nat     -- ℕ
+check default bool    -- bool
+check default unit    -- unit</juicy-ace-editor><div id='lean-full-code-6' style='display:none'>namespace hide
+
+inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A
+
+definition Prop.is_inhabited [instance] : inhabited Prop :=
+inhabited.mk true
+
+definition bool.is_inhabited [instance] : inhabited bool :=
+inhabited.mk bool.tt
+
+definition nat.is_inhabited [instance] : inhabited nat :=
+inhabited.mk nat.zero
+
+definition unit.is_inhabited [instance] : inhabited unit :=
+inhabited.mk unit.star
+
+definition default (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+
+check default Prop    -- Prop
+check default nat     -- ℕ
+check default bool    -- bool
+check default unit    -- unit
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-6').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In general, whenever we write <code>default A</code>, we are asking the
+elaborator to synthesize an element of type <code>A</code>.
+</p>
+
+<p>
+Notice that we can "see" the value that is synthesized with <code>eval</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-7' mode="ace/mode/lean" readonly="true">eval default Prop    -- true
+eval default nat     -- nat.zero
+eval default bool    -- bool.tt
+eval default unit    -- unit.star</juicy-ace-editor><div id='lean-full-code-7' style='display:none'>namespace hide
+
+inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A
+
+definition Prop.is_inhabited [instance] : inhabited Prop :=
+inhabited.mk true
+
+definition bool.is_inhabited [instance] : inhabited bool :=
+inhabited.mk bool.tt
+
+definition nat.is_inhabited [instance] : inhabited nat :=
+inhabited.mk nat.zero
+
+definition unit.is_inhabited [instance] : inhabited unit :=
+inhabited.mk unit.star
+
+definition default (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+
+eval default Prop    -- true
+eval default nat     -- nat.zero
+eval default bool    -- bool.tt
+eval default unit    -- unit.star
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-7').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+We can also codify these choices as theorems:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-8' mode="ace/mode/lean" readonly="true">example : default Prop = true := rfl
+example : default nat = nat.zero := rfl
+example : default bool = bool.tt := rfl
+example : default unit = unit.star := rfl</juicy-ace-editor><div id='lean-full-code-8' style='display:none'>namespace hide
+
+inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A
+
+definition Prop.is_inhabited [instance] : inhabited Prop :=
+inhabited.mk true
+
+definition bool.is_inhabited [instance] : inhabited bool :=
+inhabited.mk bool.tt
+
+definition nat.is_inhabited [instance] : inhabited nat :=
+inhabited.mk nat.zero
+
+definition unit.is_inhabited [instance] : inhabited unit :=
+inhabited.mk unit.star
+
+definition default (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+
+example : default Prop = true := rfl
+example : default nat = nat.zero := rfl
+example : default bool = bool.tt := rfl
+example : default unit = unit.star := rfl
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-8').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Sometimes we want to think of the default element of a type as being
+an <i>arbitrary</i> element, whose specific value should not play a role in
+our proofs. For that purpose, we can write <code>arbitrary A</code> instead of
+<code>default A</code>. The definition of <code>arbitrary</code> is the same as that of
+default, but is marked <code>irreducible</code> to discourage the elaborator from
+unfolding it. This does not preclude proofs from making use of the
+value, however, so the use of <code>arbitrary</code> rather than <code>default</code>
+functions primarily to signal intent.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgcf69130" class="outline-3">
+<h3 id="orgcf69130"><span class="section-number-3"> 9.2</span> Chaining Instances</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+If that were the extent of type class inference, it would not be all
+the impressive; it would be simply a mechanism of storing a list of
+instances for the elaborator to find in a lookup table. What makes
+type class inference powerful is that one can <i>chain</i> instances. That
+is, an instance declaration can in turn depend on an implicit instance
+of a type class. This causes class inference to chain through
+instances recursively, backtracking when necessary, in a Prolog-like
+search.
+</p>
+
+<p>
+For example, the following definition shows that if two types <code>A</code> and
+<code>B</code> are inhabited, then so is their product:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-9' mode="ace/mode/lean" readonly="true">definition prod.is_inhabited [instance] {A B : Type} [H1 : inhabited A]
+  [H2 : inhabited B] : inhabited (prod A B) :=
+inhabited.mk ((default A, default B))</juicy-ace-editor><div id='lean-full-code-9' style='display:none'>import data.prod
+
+namespace hide
+
+inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A
+
+definition Prop.is_inhabited [instance] : inhabited Prop :=
+inhabited.mk true
+
+definition bool.is_inhabited [instance] : inhabited bool :=
+inhabited.mk bool.tt
+
+definition nat.is_inhabited [instance] : inhabited nat :=
+inhabited.mk nat.zero
+
+definition unit.is_inhabited [instance] : inhabited unit :=
+inhabited.mk unit.star
+
+definition default (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+
+definition arbitrary [irreducible] (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+
+definition prod.is_inhabited [instance] {A B : Type} [H1 : inhabited A]
+  [H2 : inhabited B] : inhabited (prod A B) :=
+inhabited.mk ((default A, default B))
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-9').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+With this added to the earlier instance declarations, type class
+instance can infer, for example, a default element of <code>nat × bool × unit</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-10' mode="ace/mode/lean" readonly="true">open prod
+
+check default (nat × bool × unit)
+eval default (nat × bool × unit)</juicy-ace-editor><div id='lean-full-code-10' style='display:none'>import data.prod
+
+namespace hide
+
+inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A
+
+definition Prop.is_inhabited [instance] : inhabited Prop :=
+inhabited.mk true
+
+definition bool.is_inhabited [instance] : inhabited bool :=
+inhabited.mk bool.tt
+
+definition nat.is_inhabited [instance] : inhabited nat :=
+inhabited.mk nat.zero
+
+definition unit.is_inhabited [instance] : inhabited unit :=
+inhabited.mk unit.star
+
+definition default (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+
+definition arbitrary [irreducible] (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+
+definition prod.is_inhabited [instance] {A B : Type} [H1 : inhabited A]
+  [H2 : inhabited B] : inhabited (prod A B) :=
+inhabited.mk ((default A, default B))
+
+open prod
+
+check default (nat × bool × unit)
+eval default (nat × bool × unit)
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-10').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Given the expression <code>default (nat × bool × unit)</code>, the elaborator is
+called on to infer an implicit argument <code>?M : inhabited (nat × bool ×
+unit)</code>. The instance <code>inhabited_product</code> reduces this to inferring
+<code>?M1 : inhabited nat</code> and <code>?M2 : inhabited (bool × unit)</code>. The first
+one is solved by the instance <code>nat.is_inhabited</code>. The second invokes
+another application of <code>inhabited_product</code>, and so on, until the
+system has inferred the value <code>(nat.zero, bool.tt, unit.star)</code>.
+</p>
+
+<p>
+Similarly, we can inhabit function spaces with suitable constant
+functions:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-11' mode="ace/mode/lean" readonly="true">definition inhabited_fun [instance] (A : Type) {B : Type} [H : inhabited B] :
+  inhabited (A → B) :=
+inhabited.rec_on H (λ b, inhabited.mk (λ a, b))
+
+check default (nat → nat × bool × unit)
+eval default (nat → nat × bool × unit)</juicy-ace-editor><div id='lean-full-code-11' style='display:none'>import data.prod
+
+namespace hide
+
+inductive inhabited [class] (A : Type) : Type :=
+mk : A → inhabited A
+
+definition Prop.is_inhabited [instance] : inhabited Prop :=
+inhabited.mk true
+
+definition bool.is_inhabited [instance] : inhabited bool :=
+inhabited.mk bool.tt
+
+definition nat.is_inhabited [instance] : inhabited nat :=
+inhabited.mk nat.zero
+
+definition unit.is_inhabited [instance] : inhabited unit :=
+inhabited.mk unit.star
+
+definition default (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+
+definition arbitrary [irreducible] (A : Type) [H : inhabited A] : A :=
+inhabited.rec (λ a, a) H
+
+definition prod.is_inhabited [instance] {A B : Type} [H1 : inhabited A]
+  [H2 : inhabited B] : inhabited (prod A B) :=
+inhabited.mk ((default A, default B))
+
+definition inhabited_fun [instance] (A : Type) {B : Type} [H : inhabited B] :
+  inhabited (A → B) :=
+inhabited.rec_on H (λ b, inhabited.mk (λ a, b))
+
+check default (nat → nat × bool × unit)
+eval default (nat → nat × bool × unit)
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-11').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In this case, type class inference finds the default element <code>λ (a :
+nat), (nat.zero, bool.tt, unit.star)</code>.
+</p>
+
+<p>
+As an exercise, try defining default instances for other types, such
+as sum types and the list type.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org63f967a" class="outline-3">
+<h3 id="org63f967a"><span class="section-number-3"> 9.3</span> Decidable Propositions</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+Let us consider another example of a type class defined in the
+standard library, namely the type class of <code>decidable</code>
+propositions. Roughly speaking, an element of <code>Prop</code> is said to be
+decidable if we can decide whether it is true or false. The
+distinction is only useful in constructive mathematics; classically,
+every proposition is decidable. Nonetheless, as we will see, the
+implementation of the type class allows for a smooth transition
+between constructive and classical logic.
+</p>
+
+<p>
+In the standard library, <code>decidable</code> is defined formally as follows:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-12' mode="ace/mode/lean" readonly="true">inductive decidable [class] (p : Prop) : Type :=
+| inl :  p → decidable p
+| inr : ¬p → decidable p</juicy-ace-editor><div id='lean-full-code-12' style='display:none'>namespace hide
+
+inductive decidable [class] (p : Prop) : Type :=
+| inl :  p → decidable p
+| inr : ¬p → decidable p
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-12').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Logically speaking, having an element <code>t : decidable p</code> is stronger
+than having an element <code>t : p ∨ ¬p</code>; it enables us to define values of
+an arbitrary type depending on the truth value of <code>p</code>. For example,
+for the expression <code>if p then a else b</code> to make sense, we need to know
+that <code>p</code> is decidable. That expression is syntactic sugar for <code>ite p a
+b</code>, where <code>ite</code> is defined as follows:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-13' mode="ace/mode/lean" readonly="true">definition ite (c : Prop) [H : decidable c] {A : Type} (t e : A) : A :=
+decidable.rec_on H (λ Hc, t) (λ Hnc, e)</juicy-ace-editor><div id='lean-full-code-13' style='display:none'>namespace hide
+
+definition ite (c : Prop) [H : decidable c] {A : Type} (t e : A) : A :=
+decidable.rec_on H (λ Hc, t) (λ Hnc, e)
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-13').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The standard library also contains a variant of <code>ite</code> called <code>dite</code>,
+the dependent if-then-else expression. It is defined as follows:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-14' mode="ace/mode/lean" readonly="true">definition dite (c : Prop) [H : decidable c] {A : Type} (t : c → A) (e : ¬ c → A) : A :=
+decidable.rec_on H (λ Hc : c, t Hc) (λ Hnc : ¬ c, e Hnc)</juicy-ace-editor><div id='lean-full-code-14' style='display:none'>namespace hide
+
+definition dite (c : Prop) [H : decidable c] {A : Type} (t : c → A) (e : ¬ c → A) : A :=
+decidable.rec_on H (λ Hc : c, t Hc) (λ Hnc : ¬ c, e Hnc)
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-14').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+That is, in <code>dite c t e</code>, we can assume <code>Hc : c</code> in the "then" branch,
+and <code>Hnc : ¬ c</code> in the "else" branch.  To make <code>dite</code> more convenient
+to use, Lean allows us to write <code>if h : c then t else e</code> instead of
+<code>dite c (λ h : c, t) (λ h : ¬ c, e)</code>.
+</p>
+
+<p>
+In the standard library, we cannot prove that every proposition is
+decidable. But we can prove that <i>certain</i> propositions are
+decidable. For example, we can prove that basic operations like
+equality and comparisons on the natural numbers and the integers are
+decidable. Moreover, decidability is preserved under propositional
+connectives:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-15' mode="ace/mode/lean" readonly="true">check @decidable_and
+-- Π {p q : Prop} [Hp : decidable p] [Hq : decidable q], decidable (p ∧ q)
+
+check @decidable_or
+check @decidable_not
+check @decidable_implies
+</juicy-ace-editor><div id='lean-full-code-15' style='display:none'>check @decidable_and
+-- Π {p q : Prop} [Hp : decidable p] [Hq : decidable q], decidable (p ∧ q)
+
+check @decidable_or
+check @decidable_not
+check @decidable_implies
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-15').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Thus we can carry out definitions by cases on decidable predicates on
+the natural numbers:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-16' mode="ace/mode/lean" readonly="true">import standard
+
+open nat
+
+definition step (a b x : ℕ) : ℕ :=
+if x &lt; a ∨ x &gt; b then 0 else 1
+
+set_option pp.implicit true
+print definition step
+</juicy-ace-editor><div id='lean-full-code-16' style='display:none'>import standard
+
+open nat
+
+definition step (a b x : ℕ) : ℕ :=
+if x &lt; a ∨ x &gt; b then 0 else 1
+
+set_option pp.implicit true
+print definition step
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-16').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Turning on implicit arguments shows that the elaborator has inferred
+the decidability of the proposition <code>x &lt; a ∨ x &gt; b</code>, simply by
+applying appropriate instances.
+</p>
+
+<p>
+With the classical axioms, we can prove that every proposition is
+decidable. When you import the classical axioms, then, <code>decidable p</code>
+has an instance for every <code>p</code>, and the elaborator infers that value
+quickly. Thus all theorems in the standard library that rely on
+decidability assumptions are freely available in the classical
+library.
+</p>
+
+<p>
+This explains the "proof" <code>dec_trivial</code> in Section <a href="#" onclick="myModule.scrollTutorialTo('orgb4bff32')">Type Classes and
+Instances</a> above. The expression <code>dec_trivial</code> is actually defined in
+the module <code>init.logic</code> to be notation for the expression <code>of_is_true
+trivial</code>, where <code>of_is_true</code> infers the decidability of the theorem
+you are trying to prove, extracts the corresponding decision
+procedure, and confirms that it evaluates to <code>true</code>.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org0b8a379" class="outline-3">
+<h3 id="org0b8a379"><span class="section-number-3"> 9.4</span> Overloading with Type Classes</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+We now consider the application of type classes that motivates their
+use in functional programming languages like Haskell, namely, to
+overload notation in a principled way. In Lean, a symbol like <code>+</code> can
+be given entirely unrelated meanings, a phenomenon that is sometimes
+called "ad-hoc" overloading. Typically, however, we use the <code>+</code> symbol to
+denote a binary function from a type to itself, that is, a function of
+type <code>A → A → A</code> for some type <code>A</code>. We can use type classes to infer
+an appropriate addition function for suitable types <code>A</code>. We will see
+in the next section that this is especially useful for developing
+algebraic hierarchies of structures in a formal setting.
+</p>
+
+<p>
+We can declare a type class <code>has_add A</code> as follows:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-17' mode="ace/mode/lean" readonly="true">import standard
+
+namespace hide
+
+inductive has_add [class] (A : Type) : Type :=
+mk : (A → A → A) → has_add A
+
+definition add {A : Type} [s : has_add A] :=
+has_add.rec (λ x, x) s
+
+notation a `+` b := add a b
+
+end hide
+</juicy-ace-editor><div id='lean-full-code-17' style='display:none'>import standard
+
+namespace hide
+
+inductive has_add [class] (A : Type) : Type :=
+mk : (A → A → A) → has_add A
+
+definition add {A : Type} [s : has_add A] :=
+has_add.rec (λ x, x) s
+
+notation a `+` b := add a b
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-17').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The class <code>has_add A</code> is supposed to be inhabited exactly when there
+is an appropriate addition function for <code>A</code>. The <code>add</code> function is
+designed to find an instance of <code>has_add A</code> for the given type, <code>A</code>,
+and apply the corresponding binary addition function. The notation
+<code>a + b</code> thus refers to the addition that is appropriate to the type of
+<code>a</code> and <code>b</code>. We can the declare instances for <code>nat</code>, <code>int</code>, and
+<code>bool</code>:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-18' mode="ace/mode/lean" readonly="true">definition has_add_nat [instance] : has_add nat :=
+has_add.mk nat.add
+
+definition has_add_int [instance] : has_add int :=
+has_add.mk int.add
+
+definition has_add_bool [instance] : has_add bool :=
+has_add.mk bool.bor
+
+open [coercion] nat int
+open bool
+
+set_option pp.notation false
+check (2 : nat) + 2    -- nat
+check (2 : int) + 2    -- int
+check tt + ff          -- bool</juicy-ace-editor><div id='lean-full-code-18' style='display:none'>import standard
+
+namespace hide
+
+inductive has_add [class] (A : Type) : Type :=
+mk : (A → A → A) → has_add A
+
+definition add {A : Type} [s : has_add A] :=
+has_add.rec (λ x, x) s
+
+notation a `+` b := add a b
+
+definition has_add_nat [instance] : has_add nat :=
+has_add.mk nat.add
+
+definition has_add_int [instance] : has_add int :=
+has_add.mk int.add
+
+definition has_add_bool [instance] : has_add bool :=
+has_add.mk bool.bor
+
+open [coercion] nat int
+open bool
+
+set_option pp.notation false
+check (2 : nat) + 2    -- nat
+check (2 : int) + 2    -- int
+check tt + ff          -- bool
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-18').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the example above, we expose the coercions in namespaces <code>nat</code>
+and <code>int</code>, so that we can use numerals. If we opened these namespace
+outright, the symbol <code>+</code> would be ad-hoc overloaded. This would result
+in an ambiguity as to which addition we have in mind when we write
+<code>a + b</code> for <code>a b : nat</code>. The ambiguity is benign, however, since the
+new interpretation of <code>+</code> for <code>nat</code> is definitionally equal to the
+usual one. Setting the option to turn off notation while
+pretty-printing shows us that it is the new <code>add</code> function that is
+inferred in each case. Thus we are relying on type class overloading
+to disambiguate the meaning of the expression, rather than ad-hoc
+overloading.
+</p>
+
+<p>
+As with <code>inhabited</code> and <code>decidable</code>, the power of type class inference
+stems not only from the fact that the class enables the elaborator to
+look up appropriate instances, but also from the fact that it can
+chain instances to infer complex addition operations. For example,
+assuming that there are appropriate addition functions for types <code>A</code>
+and <code>B</code>, we can define addition on <code>A × B</code> pointwise:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-19' mode="ace/mode/lean" readonly="true">definition has_add_prod [instance] {A B : Type} [sA : has_add A] [sB : has_add B] :
+  has_add (A × B) :=
+has_add.mk (take p q, (add (prod.pr1 p) (prod.pr1 q), add (prod.pr2 p) (prod.pr2 q)))
+
+open nat
+
+check (1, 2) + (3, 4)    -- ℕ × ℕ
+eval (1, 2) + (3, 4)     -- (4, 6)</juicy-ace-editor><div id='lean-full-code-19' style='display:none'>import standard
+
+namespace hide
+
+inductive has_add [class] (A : Type) : Type :=
+mk : (A → A → A) → has_add A
+
+definition add {A : Type} [s : has_add A] :=
+has_add.rec (λ x, x) s
+
+notation a `+` b := add a b
+
+definition has_add_nat [instance] : has_add nat :=
+has_add.mk nat.add
+
+definition has_add_int [instance] : has_add int :=
+has_add.mk int.add
+
+definition has_add_bool [instance] : has_add bool :=
+has_add.mk bool.bor
+
+definition has_add_prod [instance] {A B : Type} [sA : has_add A] [sB : has_add B] :
+  has_add (A × B) :=
+has_add.mk (take p q, (add (prod.pr1 p) (prod.pr1 q), add (prod.pr2 p) (prod.pr2 q)))
+
+open nat
+
+check (1, 2) + (3, 4)    -- ℕ × ℕ
+eval (1, 2) + (3, 4)     -- (4, 6)
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-19').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+We can similarly define pointwise addition of functions:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-20' mode="ace/mode/lean" readonly="true">definition has_add_fun [instance] {A B : Type} [sB : has_add B] :
+  has_add (A → B) :=
+has_add.mk (λ f g, λ x, f x + g x)
+
+open nat
+
+check (λ x : nat, (1 : nat)) + (λ x, (2 : nat))   -- ℕ → ℕ
+eval (λ x : nat, (1 : nat)) + (λ x, (2 : nat))    -- λ (x : ℕ), 3</juicy-ace-editor><div id='lean-full-code-20' style='display:none'>import standard
+
+namespace hide
+
+inductive has_add [class] (A : Type) : Type :=
+mk : (A → A → A) → has_add A
+
+definition add {A : Type} [s : has_add A] :=
+has_add.rec (λ x, x) s
+
+notation a `+` b := add a b
+
+definition has_add_nat [instance] : has_add nat :=
+has_add.mk nat.add
+
+definition has_add_int [instance] : has_add int :=
+has_add.mk int.add
+
+definition has_add_bool [instance] : has_add bool :=
+has_add.mk bool.bor
+
+definition has_add_prod [instance] {A B : Type} [sA : has_add A] [sB : has_add B] :
+  has_add (A × B) :=
+has_add.mk (take p q, (add (prod.pr1 p) (prod.pr1 q), add (prod.pr2 p) (prod.pr2 q)))
+
+definition has_add_fun [instance] {A B : Type} [sB : has_add B] :
+  has_add (A → B) :=
+has_add.mk (λ f g, λ x, f x + g x)
+
+open nat
+
+check (λ x : nat, (1 : nat)) + (λ x, (2 : nat))   -- ℕ → ℕ
+eval (λ x : nat, (1 : nat)) + (λ x, (2 : nat))    -- λ (x : ℕ), 3
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-20').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+As an exercise, try defining instances of <code>has_add</code> for lists and
+vectors, and show that they have the work as expected.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orga28da81" class="outline-3">
+<h3 id="orga28da81"><span class="section-number-3"> 9.5</span> Managing Type Class Inference</h3>
+<div class="outline-text-3" id="text-1-5">
+<p>
+Recall from Section <a href="#" onclick="myModule.loadTutorial('05_Interacting_with_Lean.html', 'Displaying_Information')">Displaying Information</a> that you can ask Lean for
+information about the classes and instances that are currently in
+scope:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-21' mode="ace/mode/lean" readonly="true">print classes
+print instances inhabited</juicy-ace-editor><div id='lean-full-code-21' style='display:none'>import standard
+
+print classes
+print instances inhabited
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-21').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+At times, you may find that the type class inference fails to find an
+expected instance, or, worse, falls into an infinite loop and times
+out. To help debug in these situations, Lean enables you to request a
+trace of the search:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-22' mode="ace/mode/lean" readonly="true">set_option trace.class_instances true
+</juicy-ace-editor><div id='lean-full-code-22' style='display:none'>set_option trace.class_instances true
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-22').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+If you add this to your file in Emacs mode and use <code>C-c C-x</code> to run an
+independent Lean process on your file, the output buffer will show a
+trace every time the type class resolution procedure is subsequently
+triggered.
+</p>
+
+<p>
+You can also limit the search depth (the default is 32):
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-23' mode="ace/mode/lean" readonly="true">set_option class.instance_max_depth 5
+</juicy-ace-editor><div id='lean-full-code-23' style='display:none'>set_option class.instance_max_depth 5
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-23').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Remember also that in the Emacs Lean mode, tab completion works in
+<code>set_option</code>, to help you find suitable options.
+</p>
+
+<p>
+As noted above, the type class instances in a given context represent
+a Prolog-like program, which gives rise to a backtracking search. Both
+the efficiency of the program and the solutions that are found can
+depend on the order in which the system tries the instance.  Instances
+which are declared last are tried first.  Moreover, if instances are
+declared in other modules, the order in which they are tried depends
+on the order in which namespaces are opened.  Instances declared in
+namespaces which are opened later are tried earlier.
+</p>
+
+<p>
+You can change the order that type classes instances are tried by
+assigning them a <i>priority</i>. When an instance is declared, it is
+assigned a priority value <code>std.priority.default</code>, defined to be 1000
+in module <code>init.priority</code> in both the standard and hott libraries. You
+can assign other priorities when defining an instance, and you can
+later change the priority with the <code>attribute</code> command. The following
+example illustrates how this is done:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-24' mode="ace/mode/lean" readonly="true">open nat
+
+inductive foo [class] :=
+mk : nat → nat → foo
+
+definition foo.a [p : foo] : nat := foo.rec_on p (λ a b, a)
+
+definition i1 [instance] [priority std.priority.default+10] : foo :=
+foo.mk 1 1
+
+definition i2 [instance] : foo :=
+foo.mk 2 2
+
+example : foo.a = 1 := rfl
+
+definition i3 [instance] [priority std.priority.default+20] : foo :=
+foo.mk 3 3
+
+example : foo.a = 3 := rfl
+
+attribute i3 [instance] [priority 500]
+
+example : foo.a = 1 := rfl
+
+attribute i1 [instance] [priority std.priority.default-10]
+
+example : foo.a = 2 := rfl
+</juicy-ace-editor><div id='lean-full-code-24' style='display:none'>open nat
+
+inductive foo [class] :=
+mk : nat → nat → foo
+
+definition foo.a [p : foo] : nat := foo.rec_on p (λ a b, a)
+
+definition i1 [instance] [priority std.priority.default+10] : foo :=
+foo.mk 1 1
+
+definition i2 [instance] : foo :=
+foo.mk 2 2
+
+example : foo.a = 1 := rfl
+
+definition i3 [instance] [priority std.priority.default+20] : foo :=
+foo.mk 3 3
+
+example : foo.a = 3 := rfl
+
+attribute i3 [instance] [priority 500]
+
+example : foo.a = 1 := rfl
+
+attribute i1 [instance] [priority std.priority.default-10]
+
+example : foo.a = 2 := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-24').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org270dd96" class="outline-3">
+<h3 id="Instances_in_Sections"><a id="org270dd96"></a><span class="section-number-3"> 9.6</span> Instances in Sections</h3>
+<div class="outline-text-3" id="text-Instances_in_Sections">
+<p>
+We can easily introduces instances of type classes in a section or
+context using variables and parameters. Recall that variables are only
+included in declarations when they are explicitly mentioned. Instances
+of type classes are rarely explicitly mentioned in definitions, so to
+make sure that an instance of a type class is included in every
+definition and theorem, we use the <code>include</code> command.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-25' mode="ace/mode/lean" readonly="true">section
+  variables {A : Type} [H : has_add A] (a b : A)
+  include H
+
+  definition foo : a + b = a + b := rfl
+  check @foo
+end</juicy-ace-editor><div id='lean-full-code-25' style='display:none'>import standard
+
+namespace hide
+
+inductive has_add [class] (A : Type) : Type :=
+mk : (A → A → A) → has_add A
+
+definition add {A : Type} [s : has_add A] :=
+has_add.rec (λ x, x) s
+
+notation a `+` b := add a b
+
+section
+  variables {A : Type} [H : has_add A] (a b : A)
+  include H
+
+  definition foo : a + b = a + b := rfl
+  check @foo
+end
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-25').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Note that the <code>include</code> command includes a variable in every
+definition and theorem in that section.  If we want to declare a
+definition or theorem which does not use the instance, we can use the
+<code>omit</code> command:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-26' mode="ace/mode/lean" readonly="true">section
+  variables {A : Type} [H : has_add A] (a b : A)
+  include H
+  definition foo1 : a + b = a + b := rfl
+  omit H
+  definition foo2 : a  = a := rfl -- H is not an argument of foo2
+  include H
+  definition foo3 : a + a = a + a := rfl
+
+  check @foo1
+  check @foo2
+  check @foo3
+end</juicy-ace-editor><div id='lean-full-code-26' style='display:none'>namespace hide
+
+inductive has_add [class] (A : Type) : Type :=
+mk : (A → A → A) → has_add A
+
+definition add {A : Type} [s : has_add A] :=
+has_add.rec (λ x, x) s
+
+notation a `+` b := add a b
+
+section
+  variables {A : Type} [H : has_add A] (a b : A)
+  include H
+  definition foo1 : a + b = a + b := rfl
+  omit H
+  definition foo2 : a  = a := rfl -- H is not an argument of foo2
+  include H
+  definition foo3 : a + a = a + a := rfl
+
+  check @foo1
+  check @foo2
+  check @foo3
+end
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-26').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org64a98a7" class="outline-3">
+<h3 id="org64a98a7"><span class="section-number-3"> 9.7</span> Bounded Quantification</h3>
+<div class="outline-text-3" id="text-1-7">
+<p>
+A "bounded universal quantifier" is one that is of the form <code>∀ x :
+nat, x &lt; n → P x</code>. As a final illustration of the power of type class
+inference, we show that a proposition of this form is decidable
+assuming <code>P</code> is, and that type class inference can make use of that
+fact.
+</p>
+
+<p>
+First, we define <code>ball n P</code> as shorthand for ∀ x : nat, x &lt; n → P x.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-27' mode="ace/mode/lean" readonly="true">-- ∀ x : nat, x &lt; 0 → P x
+definition ball_zero (P : nat → Prop) : ball zero P :=
+λ x Hlt, absurd Hlt !not_lt_zero
+
+variables {n : nat} {P : nat → Prop}
+
+-- (∀ x : nat, x &lt; succ n → P x) implies (∀ x : nat, x &lt; n → P x)
+definition ball_of_ball_succ (H : ball (succ n) P) : ball n P  :=
+λ x Hlt, H x (lt.step Hlt)
+
+-- (∀ x : nat, x &lt; n → P x) and (P n) implies (∀ x : nat, x &lt; succ n → P x)
+definition ball_succ_of_ball (H₁ : ball n P) (H₂ : P n) : ball (succ n) P :=
+λ (x : nat) (Hlt : x &lt; succ n), or.elim (eq_or_lt_of_le (le_of_lt_succ Hlt))
+  (λ he  : x = n, eq.rec_on (eq.rec_on he rfl) H₂)
+  (λ hlt : x &lt; n, H₁ x hlt)
+
+-- (¬ P n) implies ¬ (∀ x : nat, x &lt; succ n → P x)
+definition not_ball_of_not (H₁ : ¬ P n) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (H n (lt.base n)) H₁
+
+-- ¬ (∀ x : nat, x &lt; n → P x) implies ¬ (∀ x : nat, x &lt; succ n → P x)
+definition not_ball_succ_of_not_ball (H₁ : ¬ ball n P) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (ball_of_ball_succ H) H₁</juicy-ace-editor><div id='lean-full-code-27' style='display:none'>import data.nat
+open nat decidable
+
+definition ball (n : nat) (P : nat → Prop) : Prop :=
+∀ x, x &lt; n → P x
+#+END_SRC lean
+Next, we prove some auxiliary facts that are needed for the
+decidability proof.
+#+BEGIN_SRC lean
+import data.nat
+open nat decidable algebra
+
+definition ball (n : nat) (P : nat → Prop) : Prop :=
+∀ x, x &lt; n → P x
+
+-- ∀ x : nat, x &lt; 0 → P x
+definition ball_zero (P : nat → Prop) : ball zero P :=
+λ x Hlt, absurd Hlt !not_lt_zero
+
+variables {n : nat} {P : nat → Prop}
+
+-- (∀ x : nat, x &lt; succ n → P x) implies (∀ x : nat, x &lt; n → P x)
+definition ball_of_ball_succ (H : ball (succ n) P) : ball n P  :=
+λ x Hlt, H x (lt.step Hlt)
+
+-- (∀ x : nat, x &lt; n → P x) and (P n) implies (∀ x : nat, x &lt; succ n → P x)
+definition ball_succ_of_ball (H₁ : ball n P) (H₂ : P n) : ball (succ n) P :=
+λ (x : nat) (Hlt : x &lt; succ n), or.elim (eq_or_lt_of_le (le_of_lt_succ Hlt))
+  (λ he  : x = n, eq.rec_on (eq.rec_on he rfl) H₂)
+  (λ hlt : x &lt; n, H₁ x hlt)
+
+-- (¬ P n) implies ¬ (∀ x : nat, x &lt; succ n → P x)
+definition not_ball_of_not (H₁ : ¬ P n) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (H n (lt.base n)) H₁
+
+-- ¬ (∀ x : nat, x &lt; n → P x) implies ¬ (∀ x : nat, x &lt; succ n → P x)
+definition not_ball_succ_of_not_ball (H₁ : ¬ ball n P) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (ball_of_ball_succ H) H₁
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-27').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Finally, assuming <code>P</code> is a decidable predicate, we prove <code>∀ x : nat, x
+&lt; n → P x</code> by induction on <code>n</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-28' mode="ace/mode/lean" readonly="true">definition dec_ball [instance] (H : decidable_pred P) : Π (n : nat), decidable (ball n P)
+| dec_ball 0     := inl (ball_zero P)
+| dec_ball (a+1) :=
+  match dec_ball a with
+  | inl iH  :=
+      match H a with
+      | inl Pa  := inl (ball_succ_of_ball iH Pa)
+      | inr nPa := inr (not_ball_of_not nPa)
+      end
+  | inr niH := inr (not_ball_succ_of_not_ball niH)
+  end</juicy-ace-editor><div id='lean-full-code-28' style='display:none'>import data.nat
+open nat decidable algebra
+
+definition ball (n : nat) (P : nat → Prop) : Prop :=
+∀ x, x &lt; n → P x
+definition ball_zero (P : nat → Prop) : ball zero P :=
+λ x Hlt, absurd Hlt !not_lt_zero
+
+variables {n : nat} {P : nat → Prop}
+
+definition ball_of_ball_succ (H : ball (succ n) P) : ball n P  :=
+λ x Hlt, H x (lt.step Hlt)
+
+definition ball_succ_of_ball (H₁ : ball n P) (H₂ : P n) : ball (succ n) P :=
+λ (x : nat) (Hlt : x &lt; succ n), or.elim (eq_or_lt_of_le (le_of_lt_succ Hlt))
+  (λ he  : x = n, eq.rec_on (eq.rec_on he rfl) H₂)
+  (λ hlt : x &lt; n, H₁ x hlt)
+
+definition not_ball_of_not (H₁ : ¬ P n) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (H n (lt.base n)) H₁
+
+definition not_ball_succ_of_not_ball (H₁ : ¬ ball n P) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (ball_of_ball_succ H) H₁
+
+definition dec_ball [instance] (H : decidable_pred P) : Π (n : nat), decidable (ball n P)
+| dec_ball 0     := inl (ball_zero P)
+| dec_ball (a+1) :=
+  match dec_ball a with
+  | inl iH  :=
+      match H a with
+      | inl Pa  := inl (ball_succ_of_ball iH Pa)
+      | inr nPa := inr (not_ball_of_not nPa)
+      end
+  | inr niH := inr (not_ball_succ_of_not_ball niH)
+  end
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-28').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Now we can use <code>dec_trivial</code> to prove simple theorems by "evaluation."
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-29' mode="ace/mode/lean" readonly="true">example : ∀ x : nat, x ≤ 4 → x ≠ 6 :=
+dec_trivial
+
+example : ¬ ∀ x : nat, x ≤ 5 → ∀ y, y &lt; x → y * y ≠ x :=
+dec_trivial</juicy-ace-editor><div id='lean-full-code-29' style='display:none'>import data.nat
+open nat decidable algebra
+
+definition ball (n : nat) (P : nat → Prop) : Prop :=
+∀ x, x &lt; n → P x
+definition ball_zero (P : nat → Prop) : ball zero P :=
+λ x Hlt, absurd Hlt !not_lt_zero
+
+variables {n : nat} {P : nat → Prop}
+
+definition ball_of_ball_succ (H : ball (succ n) P) : ball n P  :=
+λ x Hlt, H x (lt.step Hlt)
+
+definition ball_succ_of_ball (H₁ : ball n P) (H₂ : P n) : ball (succ n) P :=
+λ (x : nat) (Hlt : x &lt; succ n), or.elim (eq_or_lt_of_le (le_of_lt_succ Hlt))
+  (λ he  : x = n, eq.rec_on (eq.rec_on he rfl) H₂)
+  (λ hlt : x &lt; n, H₁ x hlt)
+
+definition not_ball_of_not (H₁ : ¬ P n) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (H n (lt.base n)) H₁
+
+definition not_ball_succ_of_not_ball (H₁ : ¬ ball n P) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (ball_of_ball_succ H) H₁
+
+definition dec_ball [instance] (H : decidable_pred P) : Π (n : nat), decidable (ball n P)
+| dec_ball 0     := inl (ball_zero P)
+| dec_ball (a+1) :=
+  match dec_ball a with
+  | inl iH  :=
+      match H a with
+      | inl Pa  := inl (ball_succ_of_ball iH Pa)
+      | inr nPa := inr (not_ball_of_not nPa)
+      end
+  | inr niH := inr (not_ball_succ_of_not_ball niH)
+  end
+
+example : ∀ x : nat, x ≤ 4 → x ≠ 6 :=
+dec_trivial
+
+example : ¬ ∀ x : nat, x ≤ 5 → ∀ y, y &lt; x → y * y ≠ x :=
+dec_trivial
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-29').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+We can also use the bounded quantifier to define a computable
+function. In this example, the expression <code>is_constant_range f n</code>
+returns <code>tt</code> if and only if the function <code>f</code> has the same value for
+every <code>i</code> such that <code>0 ≤ i &lt; n</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-30' mode="ace/mode/lean" readonly="true">open bool
+definition is_constant_range (f : nat → nat) (n : nat) : bool :=
+if ∀ i, i &lt; n → f i = f 0 then tt else ff
+
+example : is_constant_range (λ i, zero) 10 = tt :=
+rfl</juicy-ace-editor><div id='lean-full-code-30' style='display:none'>import data.nat
+open nat decidable algebra
+
+definition ball (n : nat) (P : nat → Prop) : Prop :=
+∀ x, x &lt; n → P x
+definition ball_zero (P : nat → Prop) : ball zero P :=
+λ x Hlt, absurd Hlt !not_lt_zero
+
+variables {n : nat} {P : nat → Prop}
+
+definition ball_of_ball_succ (H : ball (succ n) P) : ball n P  :=
+λ x Hlt, H x (lt.step Hlt)
+
+definition ball_succ_of_ball (H₁ : ball n P) (H₂ : P n) : ball (succ n) P :=
+λ (x : nat) (Hlt : x &lt; succ n), or.elim (eq_or_lt_of_le (le_of_lt_succ Hlt))
+  (λ he  : x = n, eq.rec_on (eq.rec_on he rfl) H₂)
+  (λ hlt : x &lt; n, H₁ x hlt)
+
+definition not_ball_of_not (H₁ : ¬ P n) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (H n (lt.base n)) H₁
+
+definition not_ball_succ_of_not_ball (H₁ : ¬ ball n P) : ¬ ball (succ n) P :=
+λ (H : ball (succ n) P), absurd (ball_of_ball_succ H) H₁
+
+definition dec_ball [instance] (H : decidable_pred P) : Π (n : nat), decidable (ball n P)
+| dec_ball 0     := inl (ball_zero P)
+| dec_ball (a+1) :=
+  match dec_ball a with
+  | inl iH  :=
+      match H a with
+      | inl Pa  := inl (ball_succ_of_ball iH Pa)
+      | inr nPa := inr (not_ball_of_not nPa)
+      end
+  | inr niH := inr (not_ball_succ_of_not_ball niH)
+  end
+
+open bool
+definition is_constant_range (f : nat → nat) (n : nat) : bool :=
+if ∀ i, i &lt; n → f i = f 0 then tt else ff
+
+example : is_constant_range (λ i, zero) 10 = tt :=
+rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-30').text());">Try it yourself &raquo;</button></div>
+</div>
+
+
+<p>
+As an exercise, we encourage you to show that <code>∃ x : nat, x &lt; n ∧ P x</code> is also
+decidable.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-31' mode="ace/mode/lean" readonly="true">import data.nat
+open nat decidable algebra
+
+definition bex (n : nat) (P : nat → Prop) : Prop :=
+∃ x : nat, x &lt; n ∧ P x
+
+definition not_bex_zero (P : nat → Prop) : ¬ bex 0 P :=
+sorry
+
+variables {n : nat} {P : nat → Prop}
+
+definition bex_succ (H : bex n P) : bex (succ n) P :=
+sorry
+
+definition bex_succ_of_pred  (H : P n) : bex (succ n) P :=
+sorry
+
+definition not_bex_succ (H₁ : ¬ bex n P) (H₂ : ¬ P n) : ¬ bex (succ n) P :=
+sorry
+
+definition dec_bex [instance] (H : decidable_pred P) : Π (n : nat), decidable (bex n P) :=
+sorry
+</juicy-ace-editor><div id='lean-full-code-31' style='display:none'>import data.nat
+open nat decidable algebra
+
+definition bex (n : nat) (P : nat → Prop) : Prop :=
+∃ x : nat, x &lt; n ∧ P x
+
+definition not_bex_zero (P : nat → Prop) : ¬ bex 0 P :=
+sorry
+
+variables {n : nat} {P : nat → Prop}
+
+definition bex_succ (H : bex n P) : bex (succ n) P :=
+sorry
+
+definition bex_succ_of_pred  (H : P n) : bex (succ n) P :=
+sorry
+
+definition not_bex_succ (H₁ : ¬ bex n P) (H₂ : ¬ P n) : ¬ bex (succ n) P :=
+sorry
+
+definition dec_bex [instance] (H : decidable_pred P) : Π (n : nat), decidable (bex n P) :=
+sorry
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-31').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

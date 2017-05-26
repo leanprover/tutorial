@@ -1,0 +1,874 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-26 Fri 10:45 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Theorem Proving in Lean</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="[[http://www.andrew.cmu.edu/user/avigad][Jeremy Avigad]]Jeremy Avigad, Leonardo de Moura" />
+<link rel="stylesheet" href="css/tutorial.css"/>
+<link rel="stylesheet" href="css/code.css"/>
+<script type="text/javascript" charset="utf-8">if(!window.PolymerGestures) { var head = document.getElementsByTagName('head')[0]; var js = document.createElement("script"); js.type = "text/javascript"; js.src = "//cdn.jsdelivr.net/webcomponentsjs/0.7.23/webcomponents.min.js"; head.appendChild(js); } </script>
+<link rel='import' href='juicy-ace-editor.html'/>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Theorem Proving in Lean</h1>
+
+<div id="outline-container-org429f40c" class="outline-2">
+<h2 id="Structures_and_Records"><a id="org429f40c"></a><span class="section-number-2"> 10</span> Structures and Records</h2>
+<div class="outline-text-2" id="text-Structures_and_Records">
+<p>
+We have seen that Lean's foundational system includes inductive types.
+We have, moreover, noted that it is a remarkable fact that it is
+possible to construct a substantial edifice of mathematics based on
+nothing more than the type universes, Pi types, and inductive types;
+everything else follows from those. The Lean standard library contains
+many instances of inductive types (e.g., <code>nat</code>, <code>prod</code>, <code>list</code>), and
+even the logical connectives are defined using inductive types.
+</p>
+
+<p>
+Remember that a non-recursive inductive type that contains only one
+constructor is called a <i>structure</i> or <i>record</i>. The product type is a
+structure, as is the dependent product type, that is, the Sigma
+type. In general, whenever we define a structure <code>S</code>, we usually
+define <i>projection</i> functions that allow us to "destruct" each
+instance of <code>S</code> and retrieve the values that are stored in its
+fields. The functions <code>prod.pr1</code> and <code>prod.pr2</code>, which return the
+first and second elements of a pair, are examples of such projections.
+</p>
+
+<p>
+When writing programs or formalizing mathematics, it is not uncommon
+to define structures containing many fields.  The <code>structure</code> command,
+available in Lean, provides infrastructure to support this
+process. When we define a structure using this command, Lean
+automatically generates all the projection functions. The <code>structure</code>
+command also allows us to define new structures based on previously
+defined ones. Moreover, Lean provides convenient notation for defining
+instances of a given structure.
+
+</p>
+</div>
+<div id="outline-container-orgc55834b" class="outline-3">
+<h3 id="orgc55834b"><span class="section-number-3"> 10.1</span> Declaring Structures</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+The structure command is essentially a "front end" for defining
+inductive data types. Every <code>structure</code> declaration introduces a
+namespace with the same name. The general form is as follows:
+</p>
+<div class="org-src-container">
+
+<pre class="src src-text">  structure &lt;name&gt; &lt;parameters&gt; &lt;parent-structures&gt; : Type :=
+    &lt;constructor&gt; :: &lt;fields&gt;
+</pre>
+</div>
+<p>
+Most parts are optional. Here is an example:
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-2' mode="ace/mode/lean" readonly="true">structure point (A : Type) :=
+mk :: (x : A) (y : A)
+</juicy-ace-editor><div id='lean-full-code-2' style='display:none'>structure point (A : Type) :=
+mk :: (x : A) (y : A)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-2').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Values of type <code>point</code> are created using <code>point.mk a b</code>, and the
+fields of a point <code>p</code> are accessed using <code>point.x p</code> and <code>point.y
+p</code>. The structure command also generates useful recursors and
+theorems. Here are some of the constructions generated for the
+declaration above.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-3' mode="ace/mode/lean" readonly="true">check point              -- a Type
+check point.rec_on       -- the recursor
+check point.induction_on -- then recursor to Prop
+check point.destruct     -- an alias for point.rec_on
+check point.x            -- a projection / field accessor
+check point.y            -- a projection / field accessor</juicy-ace-editor><div id='lean-full-code-3' style='display:none'>structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+check point              -- a Type
+check point.rec_on       -- the recursor
+check point.induction_on -- then recursor to Prop
+check point.destruct     -- an alias for point.rec_on
+check point.x            -- a projection / field accessor
+check point.y            -- a projection / field accessor
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-3').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+You can obtain the complete list of generated constructions using the
+command <code>print prefix</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-4' mode="ace/mode/lean" readonly="true">print prefix point</juicy-ace-editor><div id='lean-full-code-4' style='display:none'>structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+print prefix point
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-4').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Here are some simple theorems and expressions that use the generated
+constructions. As usual, you can avoid the prefix <code>point</code> by using
+the command <code>open point</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-5' mode="ace/mode/lean" readonly="true">eval point.x (point.mk (10 : ℕ) 20)
+eval point.y (point.mk (10 : ℕ) 20)
+
+open point
+
+example (A : Type) (a b : A) : x (mk a b) = a :=
+rfl
+
+example (A : Type) (a b : A) : y (mk a b) = b :=
+rfl</juicy-ace-editor><div id='lean-full-code-5' style='display:none'>structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+eval point.x (point.mk (10 : ℕ) 20)
+eval point.y (point.mk (10 : ℕ) 20)
+
+open point
+
+example (A : Type) (a b : A) : x (mk a b) = a :=
+rfl
+
+example (A : Type) (a b : A) : y (mk a b) = b :=
+rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-5').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+If the constructor is not provided, then a constructor is named <code>mk</code>
+by default.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-6' mode="ace/mode/lean" readonly="true">structure prod (A : Type) (B : Type) :=
+(pr1 : A) (pr2 : B)
+
+check prod.mk</juicy-ace-editor><div id='lean-full-code-6' style='display:none'>namespace hide
+structure prod (A : Type) (B : Type) :=
+(pr1 : A) (pr2 : B)
+
+check prod.mk
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-6').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The keyword <code>record</code> is an alias for <code>structure</code>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-7' mode="ace/mode/lean" readonly="true">record point (A : Type) :=
+mk :: (x : A) (y : A)
+</juicy-ace-editor><div id='lean-full-code-7' style='display:none'>record point (A : Type) :=
+mk :: (x : A) (y : A)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-7').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+You can provide universe levels explicitly. The annotations in the
+next example force the parameters <code>A</code> and <code>B</code> to be types from the
+same universe, and set the return type to also be in the same
+universe.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-8' mode="ace/mode/lean" readonly="true">structure prod.{u} (A : Type.{u}) (B : Type.{u}) : Type.{max 1 u} :=
+(pr1 : A) (pr2 : B)
+
+set_option pp.universes true
+check prod.mk</juicy-ace-editor><div id='lean-full-code-8' style='display:none'>namespace hide
+structure prod.{u} (A : Type.{u}) (B : Type.{u}) : Type.{max 1 u} :=
+(pr1 : A) (pr2 : B)
+
+set_option pp.universes true
+check prod.mk
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-8').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+The <code>set_option</code> command above instructs Lean to display the universe
+levels.
+</p>
+
+<p>
+We use <code>max 1 l</code> as the resultant universe level to ensure the
+universe level is never <code>0</code> even when the parameter <code>A</code> and <code>B</code> are
+propositions.  Recall that in Lean, <code>Type.{0}</code> is <code>Prop</code>, which is
+impredicative and proof irrelevant.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgaa7ce98" class="outline-3">
+<h3 id="orgaa7ce98"><span class="section-number-3"> 10.2</span> Objects</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+We have been using constructors to create elements of a structure (or
+record) type. For structures containing many fields, this is often
+inconvenient, because we have to remember the order in which the
+fields were defined. Lean therefore provides the following alternative
+notations for defining elements of a structure type.
+</p>
+<div class="org-src-container">
+
+<pre class="src src-text">  {| &lt;structure-type&gt; (, &lt;field-name&gt; := &lt;expr&gt;)* |}
+  or
+  &#10627; &lt;structure-type&gt; (, &lt;field-name&gt; := &lt;expr&gt;)* &#10628;
+</pre>
+</div>
+<p>
+For example, we use this notation to define "points." The
+order that the fields are specified does not matter, so all the
+expressions below define the same point.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-10' mode="ace/mode/lean" readonly="true">structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+check {| point, x := (10 : ℕ), y := 20 |}   -- point ℕ 
+check {| point, y := (20 : ℕ), x := 10 |}
+check ⦃ point, x := (10 : ℕ), y := 20 ⦄
+
+example : {| point, x := (10 : ℕ), y := 20 |} = {| point, y := 20, x := 10 |} :=
+rfl
+</juicy-ace-editor><div id='lean-full-code-10' style='display:none'>structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+check {| point, x := (10 : ℕ), y := 20 |}   -- point ℕ 
+check {| point, y := (20 : ℕ), x := 10 |}
+check ⦃ point, x := (10 : ℕ), y := 20 ⦄
+
+example : {| point, x := (10 : ℕ), y := 20 |} = {| point, y := 20, x := 10 |} :=
+rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-10').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Note that <code>point</code> is a parametric type, but we did not provide its
+parameters. Here, in each case, Lean infers that we are constructing
+an object of type <code>point ℕ</code> from the fact that one of the components
+is specified to be of type <code>ℕ</code>. Of course, the parameters can be
+explicitly provided with the type if needed.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-11' mode="ace/mode/lean" readonly="true">check ⦃ point ℕ, x := 10, y := 20 ⦄</juicy-ace-editor><div id='lean-full-code-11' style='display:none'>open nat
+
+structure point (A : Type) :=
+mk :: (x : A) (y : A)
+check ⦃ point ℕ, x := 10, y := 20 ⦄
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-11').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+If the value of a field is not specified, Lean tries to infer it.
+If the unspecified fields cannot be inferred, Lean signs an error
+indicating the corresponding placeholder could not be synthesized.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-12' mode="ace/mode/lean" readonly="true">structure my_struct :=
+mk :: (A : Type) (B : Type) (a : A) (b : B)
+
+check {| my_struct, a := 10, b := true |}
+</juicy-ace-editor><div id='lean-full-code-12' style='display:none'>structure my_struct :=
+mk :: (A : Type) (B : Type) (a : A) (b : B)
+
+check {| my_struct, a := 10, b := true |}
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-12').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The notation for defining record objects can also be used in
+pattern-matching expressions.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-13' mode="ace/mode/lean" readonly="true">open nat
+
+structure big :=
+(field1 : nat) (field2 : nat)
+(field3 : nat) (field4 : nat)
+(field5 : nat) (field6 : nat)
+
+definition b : big := big.mk 1 2 3 4 5 6
+
+definition v3 : nat :=
+  match b with
+   {| big, field3 := v |} := v
+  end
+
+example : v3 = 3 := rfl
+</juicy-ace-editor><div id='lean-full-code-13' style='display:none'>open nat
+
+structure big :=
+(field1 : nat) (field2 : nat)
+(field3 : nat) (field4 : nat)
+(field5 : nat) (field6 : nat)
+
+definition b : big := big.mk 1 2 3 4 5 6
+
+definition v3 : nat :=
+  match b with
+   {| big, field3 := v |} := v
+  end
+
+example : v3 = 3 := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-13').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+<i>Record update</i> is another common operation. It consists in creating
+a new record object by modifying the value of one or more fields.
+Lean provides a variation of the notation described above for
+record updates.
+</p>
+<div class="org-src-container">
+
+<pre class="src src-text">  {| &lt;structure-type&gt; (, &lt;field-name&gt; := &lt;expr&gt;)* (, &lt;record-obj&gt;)* |}
+  or
+  &#10627; &lt;structure-type&gt; (, &lt;field-name&gt; := &lt;expr&gt;)* (, &lt;record-obj&gt;)* &#10628;
+</pre>
+</div>
+<p>
+The semantics is simple: record objects <code>&lt;record-obj&gt;</code>
+provide the values for the unspecified fields. If more than one record
+object is provided, then they are visited in order until Lean finds
+one the contains the unspecified field. Lean raises an error if any of
+the field names remain unspecified after all the objects are visited.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-15' mode="ace/mode/lean" readonly="true">open nat
+
+structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+definition p1 : point nat := {| point, x := 10, y := 20 |}
+definition p2 : point nat := {| point, x := 1, p1 |}
+definition p3 : point nat := {| point, y := 1, p1 |}
+
+example : point.y p1 = point.y p2 :=
+rfl
+
+example : point.x p1 = point.x p3 :=
+rfl
+</juicy-ace-editor><div id='lean-full-code-15' style='display:none'>open nat
+
+structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+definition p1 : point nat := {| point, x := 10, y := 20 |}
+definition p2 : point nat := {| point, x := 1, p1 |}
+definition p3 : point nat := {| point, y := 1, p1 |}
+
+example : point.y p1 = point.y p2 :=
+rfl
+
+example : point.x p1 = point.x p3 :=
+rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-15').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org98e911e" class="outline-3">
+<h3 id="org98e911e"><span class="section-number-3"> 10.3</span> Inheritance</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+We can <i>extend</i> existing structures by adding new fields.
+This feature allow us to simulate a form of <i>inheritance</i>.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-16' mode="ace/mode/lean" readonly="true">structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+inductive color :=
+red | green | blue
+
+structure color_point (A : Type) extends point A :=
+mk :: (c : color)
+</juicy-ace-editor><div id='lean-full-code-16' style='display:none'>structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+inductive color :=
+red | green | blue
+
+structure color_point (A : Type) extends point A :=
+mk :: (c : color)
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-16').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The type <code>color_point</code> inherits all the fields from <code>point</code> and
+declares a new one <code>c : color</code>.  Lean automatically generates a
+coercion from <code>color_point</code> to <code>point</code>, so that a <code>color_point</code> can be
+provided wherever a <code>point</code> is expected.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-17' mode="ace/mode/lean" readonly="true">definition x_plus_y (p : point num) :=
+point.x p + point.y p
+
+definition green_point : color_point num :=
+{| color_point, x := 10, y := 20, c := color.green |}
+
+eval x_plus_y green_point    -- 30
+
+-- display implicit coercions
+set_option pp.coercions true
+
+check x_plus_y green_point    -- num
+
+example : green_point = point.mk 10 20 :=
+rfl
+
+check color_point.to_point    -- color_point ?A → point ?A</juicy-ace-editor><div id='lean-full-code-17' style='display:none'>open num structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+inductive color :=
+red | green | blue
+
+structure color_point (A : Type) extends point A :=
+mk :: (c : color)
+definition x_plus_y (p : point num) :=
+point.x p + point.y p
+
+definition green_point : color_point num :=
+{| color_point, x := 10, y := 20, c := color.green |}
+
+eval x_plus_y green_point    -- 30
+
+-- display implicit coercions
+set_option pp.coercions true
+
+check x_plus_y green_point    -- num
+
+example : green_point = point.mk 10 20 :=
+rfl
+
+check color_point.to_point    -- color_point ?A → point ?A
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-17').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+The coercions are named <code>to_&lt;parent structure&gt;</code>.  Lean always defines
+functions that map the child structure to its parents, but we can ask
+Lean not to mark these functions as coercions by using the <code>private</code>
+keyword.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-18' mode="ace/mode/lean" readonly="true">structure color_point (A : Type) extends private point A :=
+mk :: (c : color)
+
+variable f : point ℕ → bool
+
+check f (color_point.to_point (@color_point.mk ℕ 1 2 color.red))</juicy-ace-editor><div id='lean-full-code-18' style='display:none'>structure point (A : Type) :=
+mk :: (x : A) (y : A)
+
+inductive color :=
+red | green | blue
+
+structure color_point (A : Type) extends private point A :=
+mk :: (c : color)
+
+variable f : point ℕ → bool
+
+check f (color_point.to_point (@color_point.mk ℕ 1 2 color.red))
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-18').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+For private parent structures, we have to use the coercions explicitly.
+If we remove <code>color_point.to_point</code> from the above <code>check</code> command, we get a type
+error.
+</p>
+
+<p>
+We can "rename" fields inherited from parent structures using the
+<code>renaming</code> clause.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-19' mode="ace/mode/lean" readonly="true">structure prod (A : Type) (B : Type) :=
+pair :: (pr1 : A) (pr2 : B)
+
+-- Rename fields pr1 and pr2 to x and y respectively.
+structure point3 (A : Type) extends prod A A renaming pr1→x pr2→y :=
+mk :: (z : A)
+
+check point3.x
+check point3.y
+check point3.z
+
+example : point3.mk (10 : ℕ) 20 30 = prod.pair 10 20 :=
+rfl</juicy-ace-editor><div id='lean-full-code-19' style='display:none'>namespace hide
+structure prod (A : Type) (B : Type) :=
+pair :: (pr1 : A) (pr2 : B)
+
+-- Rename fields pr1 and pr2 to x and y respectively.
+structure point3 (A : Type) extends prod A A renaming pr1→x pr2→y :=
+mk :: (z : A)
+
+check point3.x
+check point3.y
+check point3.z
+
+example : point3.mk (10 : ℕ) 20 30 = prod.pair 10 20 :=
+rfl
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-19').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+In the next example, we define a structure using multiple
+inheritance, and then define an object using objects of the parent
+structures.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-20' mode="ace/mode/lean" readonly="true">import data.nat
+open nat
+
+structure point (A : Type) :=
+(x : A) (y : A) (z : A)
+
+structure rgb_val :=
+(red : nat) (green : nat) (blue : nat)
+
+structure red_green_point (A : Type) extends point A, rgb_val :=
+(no_blue : blue = 0)
+
+definition p : point nat := {| point, x := 10, y := 10, z := 20 |}
+definition r : rgb_val := {| rgb_val, red := 200, green := 50, blue := 0 |}
+definition rgp : red_green_point nat := {| red_green_point, p, r, no_blue := rfl |}
+
+example : point.x rgp = 10 := rfl
+example : rgb_val.red rgp = 200 := rfl
+</juicy-ace-editor><div id='lean-full-code-20' style='display:none'>import data.nat
+open nat
+
+structure point (A : Type) :=
+(x : A) (y : A) (z : A)
+
+structure rgb_val :=
+(red : nat) (green : nat) (blue : nat)
+
+structure red_green_point (A : Type) extends point A, rgb_val :=
+(no_blue : blue = 0)
+
+definition p : point nat := {| point, x := 10, y := 10, z := 20 |}
+definition r : rgb_val := {| rgb_val, red := 200, green := 50, blue := 0 |}
+definition rgp : red_green_point nat := {| red_green_point, p, r, no_blue := rfl |}
+
+example : point.x rgp = 10 := rfl
+example : rgb_val.red rgp = 200 := rfl
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-20').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org6f0aebb" class="outline-3">
+<h3 id="org6f0aebb"><span class="section-number-3"> 10.4</span> Structures as Classes</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+Any structure can be tagged as a <i>class</i>. This makes it a suitable
+target for the class-instance resolution procedures that were
+described in the previous chapter. Declaring a structure as a class
+also has the effect that the structure argument in each projection is
+tagged as an implicit argument to be inferred by type class
+resolution. 
+</p>
+
+<p>
+For example, in the definition of the <code>has_mul</code> structure below, the
+projection <code>has_mul.mul</code> has an implicit argument <code>[s : has_mul
+A]</code>. This means that when we write <code>has_mul.mul a b</code> with <code>a b : A</code>,
+type class resolution will search for a suitable instance of <code>has_mul
+A</code>, a multiplication structure associated with <code>A</code>. As a result, we
+can define the binary notation <code>a * b</code>, leaving the structure
+implicit.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-21' mode="ace/mode/lean" readonly="true">namespace hide
+
+structure has_mul [class] (A : Type) :=
+mk :: (mul : A → A → A)
+
+check @has_mul.mul    -- Π {A : Type} [c : has_mul A], A → A → A
+
+infixl `*`   := has_mul.mul
+
+section
+  variables (A : Type) (s : has_mul A) (a b : A)
+  check a * b
+end
+
+end hide
+</juicy-ace-editor><div id='lean-full-code-21' style='display:none'>namespace hide
+
+structure has_mul [class] (A : Type) :=
+mk :: (mul : A → A → A)
+
+check @has_mul.mul    -- Π {A : Type} [c : has_mul A], A → A → A
+
+infixl `*`   := has_mul.mul
+
+section
+  variables (A : Type) (s : has_mul A) (a b : A)
+  check a * b
+end
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-21').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+In the last <code>check</code> command, the structure <code>s</code> in the local context is
+used to synthesize the implicit argument in <code>a * b</code>.
+</p>
+
+<p>
+When a structure is marked as a class, the functions mapping a child
+structure to its parents are also marked as instances unless the
+<code>private</code> modifier is used.  As a result, whenever an instance of the
+parent structure is required, and instance of the child structure can
+be provided. In the following example, we use this mechanism to
+"reuse" the notation defined for the parent structure, <code>has_mul</code>, with the child
+structure, <code>semigroup</code>.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-22' mode="ace/mode/lean" readonly="true">namespace hide
+
+structure has_mul [class] (A : Type) :=
+mk :: (mul : A → A → A)
+
+infixl `*`   := has_mul.mul
+
+structure semigroup [class] (A : Type) extends has_mul A :=
+mk :: (assoc : ∀ a b c, mul (mul a b) c = mul a (mul b c))
+
+section
+  variables (A : Type) (s : semigroup A) (a b : A)
+  check a * b
+end
+
+end hide
+</juicy-ace-editor><div id='lean-full-code-22' style='display:none'>namespace hide
+
+structure has_mul [class] (A : Type) :=
+mk :: (mul : A → A → A)
+
+infixl `*`   := has_mul.mul
+
+structure semigroup [class] (A : Type) extends has_mul A :=
+mk :: (assoc : ∀ a b c, mul (mul a b) c = mul a (mul b c))
+
+section
+  variables (A : Type) (s : semigroup A) (a b : A)
+  check a * b
+end
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-22').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Once again, the structure <code>s</code> in the local context is used to
+synthesize the implicit argument in <code>a * b</code>.  We can see what is going
+by asking Lean to display implicit arguments, coercions, and disable
+notation.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-23' mode="ace/mode/lean" readonly="true">section
+  variables (A : Type) (s : semigroup A) (a b : A)
+
+  set_option pp.implicit true
+  set_option pp.notation false
+
+  check a * b -- @has_mul.mul A (@semigroup.to_has_mul A s) a b : A
+end</juicy-ace-editor><div id='lean-full-code-23' style='display:none'>namespace hide
+
+structure has_mul [class] (A : Type) :=
+mk :: (mul : A → A → A)
+
+infixl `*`   := has_mul.mul
+
+structure semigroup [class] (A : Type) extends has_mul A :=
+mk :: (assoc : ∀ a b c, mul (mul a b) c = mul a (mul b c))
+
+section
+  variables (A : Type) (s : semigroup A) (a b : A)
+
+  set_option pp.implicit true
+  set_option pp.notation false
+
+  check a * b -- @has_mul.mul A (@semigroup.to_has_mul A s) a b : A
+end
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-23').text());">Try it yourself &raquo;</button></div>
+</div>
+
+<p>
+Here is a fragment of the algebraic hierarchy defined using this
+mechanism.  In Lean, you can also inherit from multiple
+structures. Moreover, fields with the same name are merged. If the
+types do not match an error is generated.  The "merge" can be avoided
+by using the <code>renaming</code> clause.
+</p>
+
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-24' mode="ace/mode/lean" readonly="true">namespace hide
+
+structure has_mul [class] (A : Type) :=
+mk :: (mul : A → A → A)
+
+structure has_one [class] (A : Type) :=
+mk :: (one : A)
+
+structure has_inv [class] (A : Type) :=
+mk :: (inv : A → A)
+
+infixl `*`   := has_mul.mul
+postfix `⁻¹` := has_inv.inv
+notation 1   := has_one.one
+
+structure semigroup [class] (A : Type) extends has_mul A :=
+mk :: (assoc : ∀ a b c, mul (mul a b) c = mul a (mul b c))
+
+structure comm_semigroup [class] (A : Type) extends semigroup A :=
+mk :: (comm : ∀ a b, mul a b = mul b a)
+
+structure monoid [class] (A : Type) extends semigroup A, has_one A :=
+mk :: (right_id : ∀ a, mul a one = a) (left_id : ∀ a, mul one a = a)
+
+structure comm_monoid [class] (A : Type) extends monoid A, comm_semigroup A
+
+print prefix comm_monoid
+
+end hide
+</juicy-ace-editor><div id='lean-full-code-24' style='display:none'>namespace hide
+
+structure has_mul [class] (A : Type) :=
+mk :: (mul : A → A → A)
+
+structure has_one [class] (A : Type) :=
+mk :: (one : A)
+
+structure has_inv [class] (A : Type) :=
+mk :: (inv : A → A)
+
+infixl `*`   := has_mul.mul
+postfix `⁻¹` := has_inv.inv
+notation 1   := has_one.one
+
+structure semigroup [class] (A : Type) extends has_mul A :=
+mk :: (assoc : ∀ a b c, mul (mul a b) c = mul a (mul b c))
+
+structure comm_semigroup [class] (A : Type) extends semigroup A :=
+mk :: (comm : ∀ a b, mul a b = mul b a)
+
+structure monoid [class] (A : Type) extends semigroup A, has_one A :=
+mk :: (right_id : ∀ a, mul a one = a) (left_id : ∀ a, mul one a = a)
+
+structure comm_monoid [class] (A : Type) extends monoid A, comm_semigroup A
+
+print prefix comm_monoid
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-24').text());">Try it yourself &raquo;</button></div>
+</div>
+<p>
+Notice that we can suppress <code>:=</code> and <code>::</code> when we are not declaring
+any new fields, as is the case for the structure <code>comm_monoid</code>. The
+<code>print prefix</code> command shows that the common fields of <code>monoid</code> and
+<code>comm_semigroup</code> have been merged.
+</p>
+
+<p>
+The <code>renaming</code> clause allow us to perform non-trivial merge operations
+such as combining an abelian group with a monoid to obtain a ring.
+</p>
+<div class="org-src-container">
+<juicy-ace-editor id='lean-juicy-ace-editor-25' mode="ace/mode/lean" readonly="true">structure group [class] (A : Type) extends monoid A, has_inv A :=
+(is_inv : ∀ a, mul a (inv a) = one)
+
+structure abelian_group [class] (A : Type) extends group A renaming mul→add, comm_monoid A
+
+structure ring [class] (A : Type)
+  extends abelian_group A renaming
+    assoc→add.assoc
+    comm→add.comm
+    one→zero
+    right_id→add.right_id
+    left_id→add.left_id
+    inv→uminus
+    is_inv→uminus_is_inv,
+  monoid A renaming
+    assoc→mul.assoc
+    right_id→mul.right_id
+    left_id→mul.left_id
+:=
+(dist_left  : ∀ a b c, mul a (add b c) = add (mul a b) (mul a c))
+(dist_right : ∀ a b c, mul (add a b) c = add (mul a c) (mul b c))</juicy-ace-editor><div id='lean-full-code-25' style='display:none'>namespace hide
+
+structure has_mul [class] (A : Type) :=
+(mul : A → A → A)
+
+structure has_one [class] (A : Type) :=
+(one : A)
+
+structure has_inv [class] (A : Type) :=
+(inv : A → A)
+
+infixl `*`   := has_mul.mul
+postfix `⁻¹` := has_inv.inv
+notation 1   := has_one.one
+
+structure semigroup [class] (A : Type) extends has_mul A :=
+(assoc : ∀ a b c, mul (mul a b) c = mul a (mul b c))
+
+structure comm_semigroup [class] (A : Type) extends semigroup A renaming mul→add:=
+(comm : ∀ a b, add a b = add b a)
+
+structure monoid [class] (A : Type) extends semigroup A, has_one A :=
+(right_id : ∀ a, mul a one = a) (left_id : ∀ a, mul one a = a)
+
+structure comm_monoid [class] (A : Type) extends monoid A renaming mul→add, comm_semigroup A
+
+structure group [class] (A : Type) extends monoid A, has_inv A :=
+(is_inv : ∀ a, mul a (inv a) = one)
+
+structure abelian_group [class] (A : Type) extends group A renaming mul→add, comm_monoid A
+
+structure ring [class] (A : Type)
+  extends abelian_group A renaming
+    assoc→add.assoc
+    comm→add.comm
+    one→zero
+    right_id→add.right_id
+    left_id→add.left_id
+    inv→uminus
+    is_inv→uminus_is_inv,
+  monoid A renaming
+    assoc→mul.assoc
+    right_id→mul.right_id
+    left_id→mul.left_id
+:=
+(dist_left  : ∀ a b c, mul a (add b c) = add (mul a b) (mul a c))
+(dist_right : ∀ a b c, mul (add a b) c = add (mul a c) (mul b c))
+
+end hide
+</div><div class='no-print' align="left"><button type="button" onclick="invoke_leanjs($('#lean-full-code-25').text());">Try it yourself &raquo;</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>
